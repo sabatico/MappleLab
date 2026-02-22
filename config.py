@@ -35,6 +35,7 @@ class Config:
     VNC_PORT = 5900
     VNC_DEFAULT_USERNAME = os.environ.get('VNC_DEFAULT_USERNAME', 'admin')
     VNC_DEFAULT_PASSWORD = os.environ.get('VNC_DEFAULT_PASSWORD', 'admin')
+    VNC_USE_SSH_TUNNEL = _env_bool('VNC_USE_SSH_TUNNEL', False)
 
     # TLS / HTTPS (self-signed cert for dev; leave blank to use plain HTTP)
     SSL_CERT = os.environ.get('SSL_CERT', '')   # path to certificate file (PEM)

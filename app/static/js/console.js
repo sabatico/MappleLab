@@ -48,6 +48,8 @@ const rfb = new RFB(
 rfb.scaleViewport = true;
 rfb.resizeSession = false;
 rfb.clipViewport = false;
+rfb.qualityLevel = 6;
+rfb.compressionLevel = 2;
 
 rfb.addEventListener('connect', () => {
     setStatus('connected');

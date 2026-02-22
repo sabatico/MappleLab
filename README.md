@@ -11,7 +11,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 - Recover failed VMs by starting them again from UI
 - **Save & Shutdown** — push VM disk to local Docker registry, free the Mac node
 - **Resume** — pull VM from registry, start on any available Mac node
-- In-browser VNC console via noVNC + SSH tunnel
+- In-browser VNC console via noVNC (direct WS on LAN, SSH tunnel for WAN)
 - Admin node management UI (add/remove Mac nodes)
 - HTMX auto-refresh dashboard
 
@@ -22,8 +22,13 @@ Delete operations are defensive: manager stops VNC + VM first, then deletes, to 
 ## Architecture
 
 ```
-Browser → Flask UI (:5000) → TART Agent (:7000 on each Mac) → TART VMs
-Browser → Flask SSH tunnel → Mac node websockify → VM VNC (:5900)
+Browser → Caddy (TLS) → Flask UI (:5000) → TART Agent (:7000 on each Mac) → TART VMs
+
+VNC console (LAN, default):
+  Browser WSS → Caddy → Flask WS bridge → node websockify → VM VNC :5900
+
+VNC console (WAN / VNC_USE_SSH_TUNNEL=true):
+  Browser WSS → Caddy → Flask WS bridge → SSH tunnel → node websockify → VM VNC :5900
 
 VM disks stored in: Local Docker Registry (:5001)
 VM state tracked in: SQLite DB (orchard_ui.db)
@@ -31,11 +36,11 @@ VM state tracked in: SQLite DB (orchard_ui.db)
 
 ### Why This Architecture
 
-- Reverse proxy (Caddy/nginx) terminates TLS and upgrades WebSockets reliably; Flask/Gunicorn stay on local HTTP.
-- Manager exposes VNC as same-origin `/console/ws/<vm>` so browser talks only to manager `wss://` endpoint.
-- Apple VNC/ARD (`RFB 003.889`) uses browser cryptography APIs that require secure context, so remote VNC must be over HTTPS.
-- SSH tunnel + node-local websockify keeps node VNC ports off the LAN and avoids direct browser access to per-node VNC.
-- DB state is persisted for UX, but agent reconciliation on load/poll is the source of truth for actual VM runtime state.
+- **Reverse proxy (Caddy/nginx)** terminates TLS so Flask/Gunicorn stay on plain HTTP. Apple VNC/ARD authentication (`RFB 003.889`) uses browser WebCrypto APIs that only work in a secure context -- remote VNC requires HTTPS.
+- **Same-origin WS gateway** (`/console/ws/<vm>`) keeps all browser traffic on the manager endpoint. The Flask bridge relays frames between the browser and node-side websockify.
+- **Direct WS to node** (default on LAN) connects straight to the node's websockify, avoiding SSH encryption and tunnel-thread overhead. On WAN/data-center setups, set `VNC_USE_SSH_TUNNEL=true` to route through an encrypted SSH tunnel instead.
+- **Node-local websockify** converts WebSocket frames to raw TCP for the VM's VNC port. Each node agent manages its own websockify processes.
+- **DB state + agent reconciliation**: the database stores VM state for fast UI rendering, but agent polling on page load/refresh is the source of truth for actual runtime state.
 
 See `docs/5.Production_refurbish_vnc.md` and `docs/refurbish_plan.md` for deeper technical notes.
 
@@ -333,6 +338,7 @@ All config is via environment variables (see `.env.example`):
 | `REGISTRY_URL` | `localhost:5001` | Local Docker registry endpoint (`host:port` or `http://host:port/v2/`) |
 | `AGENT_TOKEN` | (empty) | Shared secret for TART agent auth — set same value on all nodes |
 | `VNC_DEFAULT_PASSWORD` | `admin` | TART default VNC password |
+| `VNC_USE_SSH_TUNNEL` | `false` | Route VNC through SSH tunnel (set `true` for WAN/data center) |
 | `WEBSOCKIFY_PORT_MIN` | `6900` | Start of SSH tunnel local port range |
 | `WEBSOCKIFY_PORT_MAX` | `6999` | End of SSH tunnel local port range |
 | `SSL_CERT` | — | Path to TLS certificate (PEM). Enables HTTPS when set. |

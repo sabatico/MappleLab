@@ -12,21 +12,24 @@ import websocket
 
 logger = logging.getLogger(__name__)
 
+# When SSH tunnel is off, store node host:port per VM for the WS bridge.
+_vnc_direct_targets = {}   # vm_name → (node_host, websockify_port)
 
-def _connect_local_tunnel_ws(local_port, retries=8, delay=0.15):
-    """Best-effort websocket connect to local tunnel listener."""
+
+def _connect_backend_ws(url, retries=8, delay=0.15):
+    """Best-effort websocket connect to backend (local tunnel or remote node)."""
     last_error = None
     for _ in range(retries):
         try:
             return websocket.create_connection(
-                f"ws://127.0.0.1:{local_port}",
-                timeout=1,
+                url,
+                timeout=5,
                 enable_multithread=True,
             )
         except Exception as e:
             last_error = e
             time.sleep(delay)
-    raise last_error or RuntimeError('Failed to connect local tunnel')
+    raise last_error or RuntimeError(f'Failed to connect backend WS: {url}')
 
 
 @bp.route('/<vm_name>')
@@ -38,7 +41,8 @@ def vnc(vm_name):
     Flow:
     1. Verify VM is running and owned by current user
     2. Ask agent to start websockify on the remote node
-    3. Open SSH tunnel from Flask server to agent's websockify port
+    3. If VNC_USE_SSH_TUNNEL: open SSH tunnel to node's websockify port
+       Otherwise: record node host:port for direct WS from the bridge
     4. Render noVNC page with WebSocket connection info
     """
     logger.info("vnc() — opening console for VM %r (user=%s)", vm_name, current_user.username)
@@ -85,14 +89,19 @@ def vnc(vm_name):
             flash(f'Failed to start VNC on node: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
-    # Open SSH tunnel: Flask local port → node's websockify port
-    try:
-        local_port = current_app.tunnel_manager.start_tunnel(vm_name, node, remote_port)
-        logger.info("vnc() — SSH tunnel on local port %d -> %s:%d", local_port, node.host, remote_port)
-    except Exception as e:
-        logger.error("vnc() — failed to create SSH tunnel: %s", e)
-        flash(f'Failed to create VNC tunnel: {e}', 'danger')
-        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+    use_ssh = current_app.config.get('VNC_USE_SSH_TUNNEL', False)
+
+    if use_ssh:
+        try:
+            local_port = current_app.tunnel_manager.start_tunnel(vm_name, node, remote_port)
+            logger.info("vnc() — SSH tunnel on local port %d -> %s:%d", local_port, node.host, remote_port)
+        except Exception as e:
+            logger.error("vnc() — failed to create SSH tunnel: %s", e)
+            flash(f'Failed to create VNC tunnel: {e}', 'danger')
+            return redirect(url_for('main.vm_detail', vm_name=vm_name))
+    else:
+        _vnc_direct_targets[vm_name] = (node.host, remote_port)
+        logger.info("vnc() — direct WS to %s:%d (no SSH tunnel)", node.host, remote_port)
 
     return render_template(
         'console/vnc.html',
@@ -107,10 +116,11 @@ def vnc(vm_name):
 @bp.route('/<vm_name>/disconnect', methods=['POST'])
 @login_required
 def disconnect(vm_name):
-    """Close the SSH tunnel and stop websockify on the agent."""
+    """Close the SSH tunnel (if any) and stop websockify on the agent."""
     logger.info("disconnect() — vm=%r user=%s", vm_name, current_user.username)
 
     current_app.tunnel_manager.stop_tunnel(vm_name)
+    _vnc_direct_targets.pop(vm_name, None)
 
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first()
     if vm and vm.node:
@@ -125,7 +135,7 @@ def disconnect(vm_name):
 
 @sock.route('/console/ws/<vm_name>')
 def console_ws(ws, vm_name):
-    """Same-origin websocket bridge: browser <-> local SSH tunnel socket."""
+    """Same-origin websocket bridge: browser <-> backend websockify."""
     logger.info("console_ws(%s) opened websocket request", vm_name)
     try:
         if not current_user.is_authenticated:
@@ -144,16 +154,24 @@ def console_ws(ws, vm_name):
             ws.close()
             return
 
-        local_port = current_app.tunnel_manager.get_tunnel_port(vm_name)
-        if not local_port:
-            logger.info("console_ws(%s) closing: no local tunnel port found", vm_name)
-            ws.close()
-            return
+        direct = _vnc_direct_targets.get(vm_name)
+        if direct:
+            node_host, node_port = direct
+            backend_url = f"ws://{node_host}:{node_port}"
+        else:
+            local_port = current_app.tunnel_manager.get_tunnel_port(vm_name)
+            if not local_port:
+                logger.info("console_ws(%s) closing: no backend route found", vm_name)
+                ws.close()
+                return
+            backend_url = f"ws://127.0.0.1:{local_port}"
+
+        logger.info("console_ws(%s) connecting backend %s", vm_name, backend_url)
 
         try:
-            tunnel_ws = _connect_local_tunnel_ws(local_port)
+            tunnel_ws = _connect_backend_ws(backend_url)
         except Exception as e:
-            logger.warning("console_ws(%s) failed to reach local tunnel %s: %s", vm_name, local_port, e)
+            logger.warning("console_ws(%s) failed to reach backend %s: %s", vm_name, backend_url, e)
             ws.close()
             return
 
@@ -203,14 +221,12 @@ def console_ws(ws, vm_name):
                 try:
                     data = tunnel_ws.recv()
                 except websocket.WebSocketTimeoutException:
-                    # Backend websocket can be idle; keep connection alive instead of aborting.
                     now = time.time()
-                    if now - last_ping_ts >= 15:
+                    if now - last_ping_ts >= 30:
                         try:
                             tunnel_ws.ping()
-                            logger.debug("console_ws(%s) sent backend WS ping", vm_name)
                         except Exception:
-                            logger.exception("console_ws(%s) backend WS ping failed", vm_name)
+                            logger.warning("console_ws(%s) backend WS ping failed, closing", vm_name)
                             break
                         last_ping_ts = now
                     continue

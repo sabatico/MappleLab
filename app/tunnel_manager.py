@@ -116,15 +116,15 @@ class TunnelManager:
                 while True:
                     r, _, _ = select.select([sock, chan], [], [], 1)
                     if sock in r:
-                        data = sock.recv(4096)
+                        data = sock.recv(65536)
                         if not data:
                             break
-                        chan.send(data)
+                        chan.sendall(data)
                     if chan in r:
-                        data = chan.recv(4096)
+                        data = chan.recv(65536)
                         if not data:
                             break
-                        sock.send(data)
+                        sock.sendall(data)
             except Exception:
                 pass
             finally:
