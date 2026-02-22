@@ -25,12 +25,19 @@
         #top-bar a { color: #8ab4f8; text-decoration: none; margin-left: 16px; }
         #top-bar a:hover { text-decoration: underline; }
         #top-bar .controls { display: flex; align-items: center; gap: 12px; }
+        #top-bar .profile-controls { display: flex; align-items: center; gap: 6px; }
 
         .btn-disconnect {
             background: none; border: 1px solid #dc3545; color: #dc3545;
             padding: 2px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;
         }
         .btn-disconnect:hover { background: #dc3545; color: white; }
+        .btn-profile {
+            background: none; border: 1px solid #8ab4f8; color: #8ab4f8;
+            padding: 2px 10px; border-radius: 4px; cursor: pointer; font-size: 13px;
+        }
+        .btn-profile:hover { background: #8ab4f8; color: #111; }
+        .btn-profile.active { background: #8ab4f8; color: #111; }
 
         #status-indicator {
             display: inline-block; width: 8px; height: 8px;
@@ -74,6 +81,10 @@
             Console: <span class="vm-name">{{ vm_name }}</span>
         </div>
         <div class="controls">
+            <div class="profile-controls">
+                <button type="button" id="profile-bandwidth" class="btn-profile active">Optimize Bandwidth</button>
+                <button type="button" id="profile-render" class="btn-profile">Optimize Render</button>
+            </div>
             <a href="{{ url_for('main.vm_detail', vm_name=vm_name) }}">← Back to VM</a>
             <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
             <form method="POST"

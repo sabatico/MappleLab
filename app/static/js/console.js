@@ -13,6 +13,8 @@ const { wsPath, directWsUrl, vncUsername, password, vmName } = window.VNC_CONFIG
 const indicator = document.getElementById('status-indicator');
 const overlay = document.getElementById('disconnect-overlay');
 const overlayMessage = document.getElementById('disconnect-message');
+const profileBandwidthBtn = document.getElementById('profile-bandwidth');
+const profileRenderBtn = document.getElementById('profile-render');
 
 function setStatus(state) {
     indicator.className = '';
@@ -46,12 +48,45 @@ const rfb = new RFB(
     }
 );
 
-rfb.scaleViewport = true;
-rfb.resizeSession = true;
-rfb.clipViewport = true;
-// Fast profile: lowest usable quality + strongest compression.
-rfb.qualityLevel = 1;
-rfb.compressionLevel = 9;
+const VNC_PROFILES = {
+    bandwidth: {
+        scaleViewport: true,
+        resizeSession: true,
+        clipViewport: true,
+        qualityLevel: 1,
+        compressionLevel: 9,
+        showDotCursor: true,
+    },
+    render: {
+        scaleViewport: false,
+        resizeSession: true,
+        clipViewport: true,
+        qualityLevel: 2,
+        compressionLevel: 6,
+        showDotCursor: true,
+    },
+};
+
+function applyProfile(name) {
+    const profile = VNC_PROFILES[name];
+    if (!profile) return;
+
+    rfb.scaleViewport = profile.scaleViewport;
+    rfb.resizeSession = profile.resizeSession;
+    rfb.clipViewport = profile.clipViewport;
+    rfb.qualityLevel = profile.qualityLevel;
+    rfb.compressionLevel = profile.compressionLevel;
+    rfb.showDotCursor = profile.showDotCursor;
+
+    profileBandwidthBtn?.classList.toggle('active', name === 'bandwidth');
+    profileRenderBtn?.classList.toggle('active', name === 'render');
+    console.log(`Applied VNC profile "${name}"`, profile);
+}
+
+applyProfile('bandwidth');
+
+profileBandwidthBtn?.addEventListener('click', () => applyProfile('bandwidth'));
+profileRenderBtn?.addEventListener('click', () => applyProfile('render'));
 
 rfb.addEventListener('connect', () => {
     setStatus('connected');
