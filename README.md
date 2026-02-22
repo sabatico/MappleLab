@@ -132,7 +132,18 @@ Apple ARD VNC auth requires browser cryptography APIs that are restricted on pla
 
 ### Production runtime (recommended)
 
-Run Orchard UI behind a reverse proxy (nginx/caddy) with TLS enabled:
+Run Orchard UI behind a reverse proxy (nginx/caddy) with TLS enabled.
+
+#### Reverse proxy prerequisites
+
+Before enabling `FORCE_HTTPS=true`, make sure:
+
+- The Flask/Gunicorn app is reachable on local HTTP (recommended: `127.0.0.1:5000`)
+- A reverse proxy is configured to terminate TLS and forward to that local HTTP upstream
+- WebSocket upgrades are supported by the proxy for `/console/ws/<vm_name>`
+- Flask trusts proxy headers (`TRUST_PROXY=true`) so `request.is_secure` is correct
+
+Without a proxy, forcing HTTPS can cause timeout/protocol errors (browser HTTPS to an HTTP-only backend).
 
 ```bash
 # Example gunicorn command (threaded workers support Flask-Sock websocket bridge)
@@ -150,6 +161,48 @@ SESSION_COOKIE_SAMESITE=Lax
 ```
 
 The console now uses same-origin websocket path `/console/ws/<vm_name>`, so browser VNC traffic stays on manager HTTPS/WSS endpoint.
+
+#### Simple Caddy option (LAN/VPN)
+
+Caddy is the easiest reverse proxy setup for a private network.
+
+1) Install Caddy on manager:
+
+```bash
+brew install caddy
+```
+
+2) Create a Caddyfile (path depends on brew prefix, e.g. `/opt/homebrew/etc/Caddyfile`):
+
+```caddy
+192.168.1.195 {
+    tls internal
+    reverse_proxy 127.0.0.1:5000
+}
+```
+
+3) Start Caddy:
+
+```bash
+brew services start caddy
+```
+
+4) Validate/format Caddyfile when updating config:
+
+```bash
+caddy fmt --overwrite /opt/homebrew/etc/Caddyfile
+caddy validate --config /opt/homebrew/etc/Caddyfile
+brew services restart caddy
+```
+
+5) Trust Caddy local CA on user Macs (one-time) so browser accepts the certificate.
+
+- Homebrew Caddy certificate paths (Apple Silicon):
+  - leaf certs: `/opt/homebrew/var/lib/caddy/certificates/local/<manager-ip>/`
+  - CA root to trust on clients: `/opt/homebrew/var/lib/caddy/pki/authorities/local/root.crt`
+- Import `root.crt` into macOS Keychain (`System`) and set **Always Trust**.
+
+Then open the manager UI using `https://<manager-ip>`.
 
 ### Operational git workflow (manager host)
 
