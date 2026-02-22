@@ -317,9 +317,22 @@ def delete_vm(vm_name):
         except TartAPIError:
             pass
         try:
+            current_app.tart.stop_vm(vm.node, vm_name)
+        except TartAPIError:
+            pass
+        try:
             current_app.tart.delete_vm(vm.node, vm_name)
         except TartAPIError as e:
-            logger.warning("delete_vm() — agent delete failed (continuing): %s", e)
+            logger.error("delete_vm() — agent delete failed: %s", e)
+            vm.status = 'failed'
+            vm.status_detail = f'Delete failed on node: {e}'
+            db.session.commit()
+            flash(
+                f'Failed to delete VM "{vm_name}" on node. '
+                'VM was kept in dashboard so you can retry.',
+                'danger'
+            )
+            return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     db.session.delete(vm)
     db.session.commit()
