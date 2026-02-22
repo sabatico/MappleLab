@@ -4,13 +4,22 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="${VENV_DIR:-$REPO_DIR/.venv}"
+
+cd "$REPO_DIR"
+
+# Load .env if present so FLASK_ENV/PORT and related vars are honored.
+if [[ -f "$REPO_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$REPO_DIR/.env"
+  set +a
+fi
+
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-5000}"
 FLASK_ENV="${FLASK_ENV:-development}"
 GUNICORN_WORKERS="${GUNICORN_WORKERS:-1}"
 GUNICORN_THREADS="${GUNICORN_THREADS:-8}"
-
-cd "$REPO_DIR"
 
 if [[ ! -d "$VENV_DIR" ]]; then
   echo "==> Creating virtualenv at $VENV_DIR"

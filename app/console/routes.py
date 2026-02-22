@@ -3,6 +3,7 @@ import threading
 import time
 from flask import render_template, redirect, url_for, flash, current_app, request
 from flask_login import login_required, current_user
+from simple_websocket.errors import ConnectionClosed
 from app.console import bp
 from app.models import VM
 from app.tart_client import TartAPIError
@@ -19,7 +20,7 @@ def _connect_local_tunnel_ws(local_port, retries=8, delay=0.15):
         try:
             return websocket.create_connection(
                 f"ws://127.0.0.1:{local_port}",
-                timeout=2,
+                timeout=1,
                 enable_multithread=True,
             )
         except Exception as e:
@@ -176,6 +177,13 @@ def console_ws(ws, vm_name):
                     forwarded += 1
                     if forwarded == 1:
                         logger.info("console_ws(%s) first browser->tunnel frame forwarded", vm_name)
+            except ConnectionClosed as e:
+                logger.info(
+                    "console_ws(%s) browser websocket closed (code=%s, reason=%s)",
+                    vm_name,
+                    e.reason,
+                    e.message,
+                )
             except Exception:
                 logger.exception("console_ws(%s) browser->tunnel bridge error", vm_name)
             finally:
@@ -189,9 +197,23 @@ def console_ws(ws, vm_name):
         t.start()
 
         recv_count = 0
+        last_ping_ts = time.time()
         try:
             while not closed.is_set():
-                data = tunnel_ws.recv()
+                try:
+                    data = tunnel_ws.recv()
+                except websocket.WebSocketTimeoutException:
+                    # Backend websocket can be idle; keep connection alive instead of aborting.
+                    now = time.time()
+                    if now - last_ping_ts >= 15:
+                        try:
+                            tunnel_ws.ping()
+                            logger.debug("console_ws(%s) sent backend WS ping", vm_name)
+                        except Exception:
+                            logger.exception("console_ws(%s) backend WS ping failed", vm_name)
+                            break
+                        last_ping_ts = now
+                    continue
                 if data is None:
                     logger.info("console_ws(%s) tunnel closed by remote endpoint", vm_name)
                     break

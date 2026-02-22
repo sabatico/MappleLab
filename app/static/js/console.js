@@ -33,8 +33,7 @@ setStatus('connecting');
 const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl = `${wsScheme}://${window.location.host}${wsPath}`;
 
-// Temporary deep diagnostics for Apple Screen Sharing compatibility issues.
-initLogging('debug');
+initLogging('warn');
 
 const rfb = new RFB(
     document.getElementById('vnc-container'),
