@@ -118,6 +118,8 @@ echo SSL_KEY=key.pem >> .env
 source .venv/bin/activate
 python run.py          # respects SSL_CERT/SSL_KEY from .env
 # or: flask run        # for development
+# or: helper script that prepares .venv + deps automatically
+./run.sh
 ```
 
 Open [http://localhost:5000](http://localhost:5000) (or `https://` if SSL vars are set).
@@ -163,6 +165,16 @@ Optional service restart:
 
 ```bash
 RESTART_CMD='sudo launchctl kickstart -k system/com.orchard-ui' ./deploy.sh
+```
+
+### Run helper
+
+Use the root `run.sh` for simple manager startup:
+
+```bash
+cd /Users/Shared/TART_Manager
+chmod +x run.sh
+./run.sh
 ```
 
 **Create your first user** by visiting `/auth/register`.
