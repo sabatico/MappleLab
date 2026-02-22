@@ -339,6 +339,8 @@ All config is via environment variables (see `.env.example`):
 | `AGENT_TOKEN` | (empty) | Shared secret for TART agent auth — set same value on all nodes |
 | `VNC_DEFAULT_PASSWORD` | `admin` | TART default VNC password |
 | `VNC_USE_SSH_TUNNEL` | `false` | Route VNC through SSH tunnel (set `true` for WAN/data center) |
+| `VNC_BROWSER_DIRECT_NODE_WS` | `false` | Browser connects directly to node websockify (bypasses Flask WS relay) |
+| `VNC_BROWSER_DIRECT_NODE_WS_SCHEME` | auto | Direct mode scheme override (`ws` or `wss`) |
 | `WEBSOCKIFY_PORT_MIN` | `6900` | Start of SSH tunnel local port range |
 | `WEBSOCKIFY_PORT_MAX` | `6999` | End of SSH tunnel local port range |
 | `SSL_CERT` | — | Path to TLS certificate (PEM). Enables HTTPS when set. |

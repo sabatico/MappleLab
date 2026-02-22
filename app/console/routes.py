@@ -90,8 +90,18 @@ def vnc(vm_name):
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     use_ssh = current_app.config.get('VNC_USE_SSH_TUNNEL', False)
+    use_browser_direct = current_app.config.get('VNC_BROWSER_DIRECT_NODE_WS', False)
+    direct_ws_url = None
 
-    if use_ssh:
+    if use_browser_direct:
+        configured_scheme = current_app.config.get('VNC_BROWSER_DIRECT_NODE_WS_SCHEME', '').strip()
+        direct_scheme = configured_scheme or ('wss' if request.is_secure else 'ws')
+        direct_ws_url = f'{direct_scheme}://{node.host}:{remote_port}'
+        # Ensure stale relay routes are not used when browser-direct mode is enabled.
+        _vnc_direct_targets.pop(vm_name, None)
+        current_app.tunnel_manager.stop_tunnel(vm_name)
+        logger.info("vnc() — browser direct websocket enabled: %s", direct_ws_url)
+    elif use_ssh:
         try:
             local_port = current_app.tunnel_manager.start_tunnel(vm_name, node, remote_port)
             logger.info("vnc() — SSH tunnel on local port %d -> %s:%d", local_port, node.host, remote_port)
@@ -108,6 +118,7 @@ def vnc(vm_name):
         vm_name=vm_name,
         vm=vm,
         ws_path=f'/console/ws/{vm_name}',
+        direct_ws_url=direct_ws_url,
         vnc_username=current_app.config['VNC_DEFAULT_USERNAME'],
         vnc_password=current_app.config['VNC_DEFAULT_PASSWORD'],
     )

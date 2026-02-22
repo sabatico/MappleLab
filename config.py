@@ -36,6 +36,10 @@ class Config:
     VNC_DEFAULT_USERNAME = os.environ.get('VNC_DEFAULT_USERNAME', 'admin')
     VNC_DEFAULT_PASSWORD = os.environ.get('VNC_DEFAULT_PASSWORD', 'admin')
     VNC_USE_SSH_TUNNEL = _env_bool('VNC_USE_SSH_TUNNEL', False)
+    # Optional browser-direct mode: no Flask WS relay (browser connects to node websockify).
+    VNC_BROWSER_DIRECT_NODE_WS = _env_bool('VNC_BROWSER_DIRECT_NODE_WS', False)
+    # Leave empty for auto (wss if page is https, otherwise ws).
+    VNC_BROWSER_DIRECT_NODE_WS_SCHEME = os.environ.get('VNC_BROWSER_DIRECT_NODE_WS_SCHEME', '')
 
     # TLS / HTTPS (self-signed cert for dev; leave blank to use plain HTTP)
     SSL_CERT = os.environ.get('SSL_CERT', '')   # path to certificate file (PEM)

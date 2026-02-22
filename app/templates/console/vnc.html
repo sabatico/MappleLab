@@ -95,6 +95,7 @@
     <script>
         window.VNC_CONFIG = {
             wsPath: '{{ ws_path }}',
+            directWsUrl: {{ direct_ws_url|tojson }},
             vncUsername: '{{ vnc_username }}',
             password: '{{ vnc_password }}',
             vmName: '{{ vm_name }}'

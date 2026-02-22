@@ -8,7 +8,7 @@
 import RFB from '/static/novnc/core/rfb.js';
 import { initLogging } from '/static/novnc/core/util/logging.js';
 
-const { wsPath, vncUsername, password, vmName } = window.VNC_CONFIG;
+const { wsPath, directWsUrl, vncUsername, password, vmName } = window.VNC_CONFIG;
 
 const indicator = document.getElementById('status-indicator');
 const overlay = document.getElementById('disconnect-overlay');
@@ -32,7 +32,7 @@ setStatus('connecting');
 const sessionStart = performance.now();
 
 const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const wsUrl = `${wsScheme}://${window.location.host}${wsPath}`;
+const wsUrl = directWsUrl || `${wsScheme}://${window.location.host}${wsPath}`;
 
 initLogging('warn');
 
