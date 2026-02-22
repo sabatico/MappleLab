@@ -6,8 +6,9 @@
  */
 
 import RFB from '/static/novnc/core/rfb.js';
+import { initLogging } from '/static/novnc/core/util/logging.js';
 
-const { wsHost, wsPort, password, vmName } = window.VNC_CONFIG;
+const { wsHost, wsPort, vncUsername, password, vmName } = window.VNC_CONFIG;
 
 const indicator = document.getElementById('status-indicator');
 const overlay = document.getElementById('disconnect-overlay');
@@ -32,12 +33,16 @@ setStatus('connecting');
 const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl = `${wsScheme}://${wsHost}:${wsPort}`;
 
+// Temporary deep diagnostics for Apple Screen Sharing compatibility issues.
+initLogging('debug');
+
 const rfb = new RFB(
     document.getElementById('vnc-container'),
     wsUrl,
     {
-        credentials: { password },
-        shared: true,
+        credentials: { username: vncUsername, password },
+        // Apple VNC behaves better with an exclusive session.
+        shared: false,
     }
 );
 
@@ -49,6 +54,10 @@ rfb.addEventListener('connect', () => {
     setStatus('connected');
     hideOverlay();
     console.log(`noVNC connected to ${vmName}`);
+});
+
+rfb.addEventListener('desktopname', (evt) => {
+    console.log(`noVNC desktop name for ${vmName}:`, evt.detail?.name);
 });
 
 rfb.addEventListener('disconnect', (evt) => {
@@ -64,7 +73,7 @@ rfb.addEventListener('disconnect', (evt) => {
 });
 
 rfb.addEventListener('credentialsrequired', () => {
-    rfb.sendCredentials({ password });
+    rfb.sendCredentials({ username: vncUsername, password });
 });
 
 rfb.addEventListener('securityfailure', (evt) => {

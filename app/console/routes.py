@@ -39,7 +39,20 @@ def vnc(vm_name):
         logger.debug("vnc() — agent started websockify on port %d", remote_port)
     except TartAPIError as e:
         logger.error("vnc() — failed to start VNC on agent: %s", e)
-        flash(f'Failed to start VNC on node: {e}', 'danger')
+        msg = str(e)
+        if (
+            'No reachable VNC endpoint' in msg
+            or 'localhost VNC is unavailable' in msg
+            or '127.0.0.1:5900' in msg
+        ):
+            flash(
+                'No VNC endpoint is currently reachable for this VM. '
+                'Verify the VM is running, then restart it from the UI Start button '
+                '(launches Tart with --vnc) and retry Console.',
+                'warning',
+            )
+        else:
+            flash(f'Failed to start VNC on node: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     # Open SSH tunnel: Flask local port → node's websockify port
@@ -58,6 +71,7 @@ def vnc(vm_name):
         vm=vm,
         ws_host=ws_host,
         ws_port=local_port,
+        vnc_username=current_app.config['VNC_DEFAULT_USERNAME'],
         vnc_password=current_app.config['VNC_DEFAULT_PASSWORD'],
     )
 
