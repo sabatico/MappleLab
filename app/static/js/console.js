@@ -58,9 +58,9 @@ const VNC_PROFILES = {
         showDotCursor: true,
     },
     render: {
-        scaleViewport: false,
-        resizeSession: true,
-        clipViewport: true,
+        scaleViewport: true,
+        resizeSession: false,
+        clipViewport: false,
         qualityLevel: 2,
         compressionLevel: 6,
         showDotCursor: true,
