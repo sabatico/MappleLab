@@ -29,6 +29,7 @@ function hideOverlay() {
 }
 
 setStatus('connecting');
+const sessionStart = performance.now();
 
 const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const wsUrl = `${wsScheme}://${window.location.host}${wsPath}`;
@@ -54,7 +55,7 @@ rfb.compressionLevel = 2;
 rfb.addEventListener('connect', () => {
     setStatus('connected');
     hideOverlay();
-    console.log(`noVNC connected to ${vmName}`);
+    console.log(`noVNC connected to ${vmName} in ${Math.round(performance.now() - sessionStart)}ms`);
 });
 
 rfb.addEventListener('desktopname', (evt) => {
@@ -63,12 +64,13 @@ rfb.addEventListener('desktopname', (evt) => {
 
 rfb.addEventListener('disconnect', (evt) => {
     setStatus('disconnected');
+    const lifetimeMs = Math.round(performance.now() - sessionStart);
     if (evt.detail?.clean) {
-        console.log(`noVNC disconnected cleanly from ${vmName}`);
+        console.log(`noVNC disconnected cleanly from ${vmName} after ${lifetimeMs}ms`);
         showOverlay('VNC session ended.');
     } else {
         const reason = evt.detail?.reason || 'Connection lost unexpectedly.';
-        console.warn(`noVNC disconnected from ${vmName}:`, reason);
+        console.warn(`noVNC disconnected from ${vmName} after ${lifetimeMs}ms:`, reason);
         showOverlay(reason);
     }
 });

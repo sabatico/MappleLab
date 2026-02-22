@@ -136,6 +136,7 @@ def disconnect(vm_name):
 @sock.route('/console/ws/<vm_name>')
 def console_ws(ws, vm_name):
     """Same-origin websocket bridge: browser <-> backend websockify."""
+    session_started = time.monotonic()
     logger.info("console_ws(%s) opened websocket request", vm_name)
     try:
         if not current_user.is_authenticated:
@@ -169,7 +170,14 @@ def console_ws(ws, vm_name):
         logger.info("console_ws(%s) connecting backend %s", vm_name, backend_url)
 
         try:
+            backend_connect_started = time.monotonic()
             tunnel_ws = _connect_backend_ws(backend_url)
+            backend_connect_ms = int((time.monotonic() - backend_connect_started) * 1000)
+            logger.info(
+                "console_ws(%s) backend websocket connected in %dms",
+                vm_name,
+                backend_connect_ms,
+            )
         except Exception as e:
             logger.warning("console_ws(%s) failed to reach backend %s: %s", vm_name, backend_url, e)
             ws.close()
@@ -177,9 +185,18 @@ def console_ws(ws, vm_name):
 
         closed = threading.Event()
         ws_send_lock = threading.Lock()
+        metrics_lock = threading.Lock()
+        metrics = {
+            'browser_to_tunnel_frames': 0,
+            'browser_to_tunnel_bytes': 0,
+            'tunnel_to_browser_frames': 0,
+            'tunnel_to_browser_bytes': 0,
+            'backend_recv_timeouts': 0,
+            'first_browser_to_tunnel_ms': None,
+            'first_tunnel_to_browser_ms': None,
+        }
 
         def _ws_to_tcp():
-            forwarded = 0
             try:
                 while not closed.is_set():
                     message = ws.receive()
@@ -190,11 +207,22 @@ def console_ws(ws, vm_name):
                         continue
                     if isinstance(message, str):
                         tunnel_ws.send(message)
+                        payload_len = len(message.encode('utf-8'))
                     else:
                         tunnel_ws.send(message, opcode=websocket.ABNF.OPCODE_BINARY)
-                    forwarded += 1
-                    if forwarded == 1:
-                        logger.info("console_ws(%s) first browser->tunnel frame forwarded", vm_name)
+                        payload_len = len(message)
+                    with metrics_lock:
+                        metrics['browser_to_tunnel_frames'] += 1
+                        metrics['browser_to_tunnel_bytes'] += payload_len
+                        if metrics['first_browser_to_tunnel_ms'] is None:
+                            metrics['first_browser_to_tunnel_ms'] = int(
+                                (time.monotonic() - session_started) * 1000
+                            )
+                            logger.info(
+                                "console_ws(%s) first browser->tunnel frame forwarded at %dms",
+                                vm_name,
+                                metrics['first_browser_to_tunnel_ms'],
+                            )
             except ConnectionClosed as e:
                 logger.info(
                     "console_ws(%s) browser websocket closed (code=%s, reason=%s)",
@@ -214,13 +242,14 @@ def console_ws(ws, vm_name):
         t = threading.Thread(target=_ws_to_tcp, daemon=True)
         t.start()
 
-        recv_count = 0
         last_ping_ts = time.time()
         try:
             while not closed.is_set():
                 try:
                     data = tunnel_ws.recv()
                 except websocket.WebSocketTimeoutException:
+                    with metrics_lock:
+                        metrics['backend_recv_timeouts'] += 1
                     now = time.time()
                     if now - last_ping_ts >= 30:
                         try:
@@ -235,9 +264,19 @@ def console_ws(ws, vm_name):
                     break
                 with ws_send_lock:
                     ws.send(data)
-                recv_count += 1
-                if recv_count == 1:
-                    logger.info("console_ws(%s) first tunnel->browser frame forwarded", vm_name)
+                payload_len = len(data.encode('utf-8')) if isinstance(data, str) else len(data)
+                with metrics_lock:
+                    metrics['tunnel_to_browser_frames'] += 1
+                    metrics['tunnel_to_browser_bytes'] += payload_len
+                    if metrics['first_tunnel_to_browser_ms'] is None:
+                        metrics['first_tunnel_to_browser_ms'] = int(
+                            (time.monotonic() - session_started) * 1000
+                        )
+                        logger.info(
+                            "console_ws(%s) first tunnel->browser frame forwarded at %dms",
+                            vm_name,
+                            metrics['first_tunnel_to_browser_ms'],
+                        )
         except Exception:
             logger.exception("console_ws(%s) tunnel->browser bridge error", vm_name)
         finally:
@@ -246,6 +285,23 @@ def console_ws(ws, vm_name):
                 tunnel_ws.close()
             except Exception:
                 pass
+            session_ms = int((time.monotonic() - session_started) * 1000)
+            with metrics_lock:
+                logger.info(
+                    "console_ws(%s) session summary: duration_ms=%d backend=%s "
+                    "tx_frames=%d tx_bytes=%d rx_frames=%d rx_bytes=%d "
+                    "first_tx_ms=%s first_rx_ms=%s backend_timeouts=%d",
+                    vm_name,
+                    session_ms,
+                    backend_url,
+                    metrics['browser_to_tunnel_frames'],
+                    metrics['browser_to_tunnel_bytes'],
+                    metrics['tunnel_to_browser_frames'],
+                    metrics['tunnel_to_browser_bytes'],
+                    metrics['first_browser_to_tunnel_ms'],
+                    metrics['first_tunnel_to_browser_ms'],
+                    metrics['backend_recv_timeouts'],
+                )
 
         try:
             with ws_send_lock:
