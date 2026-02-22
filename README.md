@@ -12,6 +12,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 - **Save & Shutdown** — push VM disk to local Docker registry, free the Mac node
 - **Resume** — pull VM from registry, start on any available Mac node
 - In-browser VNC console via noVNC (direct WS on LAN, SSH tunnel for WAN)
+- Live VNC profile switch (`Optimize Bandwidth` / `Optimize Render`) in console toolbar
 - Admin node management UI (add/remove Mac nodes)
 - HTMX auto-refresh dashboard
 
@@ -29,6 +30,10 @@ VNC console (LAN, default):
 
 VNC console (WAN / VNC_USE_SSH_TUNNEL=true):
   Browser WSS → Caddy → Flask WS bridge → SSH tunnel → node websockify → VM VNC :5900
+
+VNC console (browser-direct, optional):
+  Browser WSS → node websockify endpoint directly (no Flask WS bridge)
+  (requires TLS-capable node endpoint; plain node `ws://:6900` cannot be used from `https://` pages)
 
 VM disks stored in: Local Docker Registry (:5001)
 VM state tracked in: SQLite DB (orchard_ui.db)
@@ -177,6 +182,7 @@ SESSION_COOKIE_SAMESITE=Lax
 
 The console now uses same-origin websocket path `/console/ws/<vm_name>`, so browser VNC traffic stays on manager HTTPS/WSS endpoint.
 In production, prefer `./run.sh` (it loads `.env` and automatically uses gunicorn when `FLASK_ENV=production`).
+Default VNC profile is bandwidth-optimized; you can switch profiles live inside the console toolbar.
 
 #### Simple Caddy option (LAN/VPN)
 

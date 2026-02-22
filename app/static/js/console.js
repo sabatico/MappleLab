@@ -15,6 +15,7 @@ const overlay = document.getElementById('disconnect-overlay');
 const overlayMessage = document.getElementById('disconnect-message');
 const profileBandwidthBtn = document.getElementById('profile-bandwidth');
 const profileRenderBtn = document.getElementById('profile-render');
+const PROFILE_STORAGE_KEY = 'orchard_vnc_profile';
 
 function setStatus(state) {
     indicator.className = '';
@@ -81,9 +82,23 @@ function applyProfile(name) {
     profileBandwidthBtn?.classList.toggle('active', name === 'bandwidth');
     profileRenderBtn?.classList.toggle('active', name === 'render');
     console.log(`Applied VNC profile "${name}"`, profile);
+    try {
+        localStorage.setItem(PROFILE_STORAGE_KEY, name);
+    } catch {
+        // Ignore storage restrictions (private mode / locked-down browser policy).
+    }
 }
 
-applyProfile('bandwidth');
+let initialProfile = 'bandwidth';
+try {
+    const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (savedProfile && Object.hasOwn(VNC_PROFILES, savedProfile)) {
+        initialProfile = savedProfile;
+    }
+} catch {
+    // Ignore storage restrictions and fall back to default.
+}
+applyProfile(initialProfile);
 
 profileBandwidthBtn?.addEventListener('click', () => applyProfile('bandwidth'));
 profileRenderBtn?.addEventListener('click', () => applyProfile('render'));

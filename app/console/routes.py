@@ -273,8 +273,17 @@ def console_ws(ws, vm_name):
                 if data is None:
                     logger.info("console_ws(%s) tunnel closed by remote endpoint", vm_name)
                     break
-                with ws_send_lock:
-                    ws.send(data)
+                try:
+                    with ws_send_lock:
+                        ws.send(data)
+                except ConnectionClosed as e:
+                    logger.info(
+                        "console_ws(%s) browser websocket closed during send (code=%s, reason=%s)",
+                        vm_name,
+                        e.reason,
+                        e.message,
+                    )
+                    break
                 payload_len = len(data.encode('utf-8')) if isinstance(data, str) else len(data)
                 with metrics_lock:
                     metrics['tunnel_to_browser_frames'] += 1
@@ -317,6 +326,9 @@ def console_ws(ws, vm_name):
         try:
             with ws_send_lock:
                 ws.close()
+        except ConnectionClosed:
+            # Normal case if browser already closed.
+            pass
         except Exception:
             logger.exception("console_ws(%s) websocket close error", vm_name)
     except Exception:
@@ -324,5 +336,7 @@ def console_ws(ws, vm_name):
         try:
             with ws_send_lock:
                 ws.close()
+        except ConnectionClosed:
+            pass
         except Exception:
             pass
