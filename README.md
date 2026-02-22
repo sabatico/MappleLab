@@ -151,29 +151,47 @@ SESSION_COOKIE_SAMESITE=Lax
 
 The console now uses same-origin websocket path `/console/ws/<vm_name>`, so browser VNC traffic stays on manager HTTPS/WSS endpoint.
 
-### Deploy helper
+### Operational git workflow (manager host)
 
-Use the root `deploy.sh` on the manager host to update code and dependencies:
+Use this once to connect an existing operational folder to Git while preserving local data:
+
+```bash
+cd /Users/Shared
+tar -czf TART_Manager_backup_$(date +%Y%m%d_%H%M%S).tar.gz TART_Manager
+
+cd /Users/Shared/TART_Manager
+mkdir -p /tmp/tart_manager_keep
+cp -a .env instance logs /tmp/tart_manager_keep/ 2>/dev/null || true
+
+git init
+git remote add origin https://github.com/sabatico/orchard_ui.git
+git fetch origin
+git reset --hard origin/main
+git branch -M main
+git branch --set-upstream-to=origin/main main
+
+cp -a /tmp/tart_manager_keep/.env /Users/Shared/TART_Manager/ 2>/dev/null || true
+cp -a /tmp/tart_manager_keep/instance /Users/Shared/TART_Manager/ 2>/dev/null || true
+cp -a /tmp/tart_manager_keep/logs /Users/Shared/TART_Manager/ 2>/dev/null || true
+```
+
+Daily update command:
 
 ```bash
 cd /Users/Shared/TART_Manager
-chmod +x deploy.sh
 ./deploy.sh
 ```
 
-Optional service restart:
+Optional service restart during deploy:
 
 ```bash
 RESTART_CMD='sudo launchctl kickstart -k system/com.orchard-ui' ./deploy.sh
 ```
 
-### Run helper
-
-Use the root `run.sh` for simple manager startup:
+Quick manual start:
 
 ```bash
 cd /Users/Shared/TART_Manager
-chmod +x run.sh
 ./run.sh
 ```
 
