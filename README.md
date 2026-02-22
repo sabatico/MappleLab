@@ -149,6 +149,22 @@ SESSION_COOKIE_SAMESITE=Lax
 
 The console now uses same-origin websocket path `/console/ws/<vm_name>`, so browser VNC traffic stays on manager HTTPS/WSS endpoint.
 
+### Deploy helper
+
+Use the root `deploy.sh` on the manager host to update code and dependencies:
+
+```bash
+cd /Users/Shared/TART_Manager
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Optional service restart:
+
+```bash
+RESTART_CMD='sudo launchctl kickstart -k system/com.orchard-ui' ./deploy.sh
+```
+
 **Create your first user** by visiting `/auth/register`.
 To make yourself an admin, open a flask shell:
 ```bash
