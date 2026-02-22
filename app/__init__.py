@@ -1,6 +1,7 @@
 import atexit
 import logging
-from flask import Flask
+from flask import Flask, request, redirect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,10 @@ def create_app(config_class=None):
     app = Flask(__name__)
     app.config.from_object(config_class)
     logger.info("Flask app created — config loaded from %s", config_class.__name__)
+
+    if app.config.get('TRUST_PROXY'):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+        logger.info("ProxyFix enabled (trusting X-Forwarded-Proto/Host)")
 
     # --- Initialize extensions (db, login_manager, bcrypt) ---
     from app.extensions import init_extensions
@@ -85,6 +90,17 @@ def create_app(config_class=None):
             'poll_interval_ms': app.config['VM_POLL_INTERVAL_MS'],
             'current_user': current_user,
         }
+
+    @app.before_request
+    def enforce_https():
+        """Redirect HTTP requests to HTTPS when FORCE_HTTPS is enabled."""
+        if not app.config.get('FORCE_HTTPS'):
+            return None
+        if request.is_secure:
+            return None
+        if request.host.startswith('localhost') or request.host.startswith('127.0.0.1'):
+            return None
+        return redirect(request.url.replace('http://', 'https://', 1), code=301)
 
     # --- Error handlers ---
     @app.errorhandler(404)

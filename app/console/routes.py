@@ -1,11 +1,27 @@
 import logging
+import socket
+import threading
+import time
 from flask import render_template, redirect, url_for, flash, current_app, request
 from flask_login import login_required, current_user
 from app.console import bp
 from app.models import VM
 from app.tart_client import TartAPIError
+from app.extensions import sock
 
 logger = logging.getLogger(__name__)
+
+
+def _connect_local_tunnel(local_port, retries=8, delay=0.15):
+    """Best-effort connect to local tunnel listener with short retries."""
+    last_error = None
+    for _ in range(retries):
+        try:
+            return socket.create_connection(('127.0.0.1', local_port), timeout=2)
+        except OSError as e:
+            last_error = e
+            time.sleep(delay)
+    raise last_error or RuntimeError('Failed to connect local tunnel')
 
 
 @bp.route('/<vm_name>')
@@ -26,6 +42,15 @@ def vnc(vm_name):
 
     if vm.status != 'running':
         flash(f'VM "{vm_name}" is not running (status: {vm.status}).', 'warning')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    host = request.host.split(':')[0]
+    if not request.is_secure and host not in ('localhost', '127.0.0.1'):
+        flash(
+            'Remote console access requires HTTPS to enable browser cryptography for '
+            'Apple VNC authentication. Open the manager UI via https:// and retry.',
+            'warning',
+        )
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     node = vm.node
@@ -64,13 +89,11 @@ def vnc(vm_name):
         flash(f'Failed to create VNC tunnel: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
-    ws_host = request.host.split(':')[0]  # Flask server hostname (no port)
     return render_template(
         'console/vnc.html',
         vm_name=vm_name,
         vm=vm,
-        ws_host=ws_host,
-        ws_port=local_port,
+        ws_path=f'/console/ws/{vm_name}',
         vnc_username=current_app.config['VNC_DEFAULT_USERNAME'],
         vnc_password=current_app.config['VNC_DEFAULT_PASSWORD'],
     )
@@ -93,3 +116,70 @@ def disconnect(vm_name):
 
     flash('Console disconnected.', 'info')
     return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+
+@sock.route('/console/ws/<vm_name>')
+def console_ws(ws, vm_name):
+    """Same-origin websocket bridge: browser <-> local SSH tunnel socket."""
+    if not current_user.is_authenticated:
+        ws.close()
+        return
+
+    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first()
+    if not vm or vm.status != 'running':
+        ws.close()
+        return
+
+    local_port = current_app.tunnel_manager.get_tunnel_port(vm_name)
+    if not local_port:
+        ws.close()
+        return
+
+    try:
+        tunnel_sock = _connect_local_tunnel(local_port)
+    except Exception as e:
+        logger.warning("console_ws(%s) failed to reach local tunnel %s: %s", vm_name, local_port, e)
+        ws.close()
+        return
+
+    closed = threading.Event()
+
+    def _ws_to_tcp():
+        try:
+            while not closed.is_set():
+                message = ws.receive()
+                if message is None:
+                    break
+                if isinstance(message, str):
+                    message = message.encode()
+                tunnel_sock.sendall(message)
+        except Exception:
+            pass
+        finally:
+            closed.set()
+            try:
+                tunnel_sock.shutdown(socket.SHUT_RDWR)
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_ws_to_tcp, daemon=True)
+    t.start()
+
+    try:
+        while not closed.is_set():
+            data = tunnel_sock.recv(4096)
+            if not data:
+                break
+            ws.send(data)
+    except Exception:
+        pass
+    finally:
+        closed.set()
+        try:
+            tunnel_sock.close()
+        except Exception:
+            pass
+        try:
+            ws.close()
+        except Exception:
+            pass

@@ -125,6 +125,30 @@ Default user: admin/admin123
 
 On first run, the SQLite database is created automatically (`orchard_ui.db`).
 
+Note for VNC: when connecting from a remote browser, open Orchard UI over `https://`.
+Apple ARD VNC auth requires browser cryptography APIs that are restricted on plain HTTP.
+
+### Production runtime (recommended)
+
+Run Orchard UI behind a reverse proxy (nginx/caddy) with TLS enabled:
+
+```bash
+# Example gunicorn command (threaded workers support Flask-Sock websocket bridge)
+gunicorn -w 2 --threads 8 -b 127.0.0.1:5000 run:app
+```
+
+Set these env vars in production:
+
+```bash
+TRUST_PROXY=true
+FORCE_HTTPS=true
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_HTTPONLY=true
+SESSION_COOKIE_SAMESITE=Lax
+```
+
+The console now uses same-origin websocket path `/console/ws/<vm_name>`, so browser VNC traffic stays on manager HTTPS/WSS endpoint.
+
 **Create your first user** by visiting `/auth/register`.
 To make yourself an admin, open a flask shell:
 ```bash
@@ -173,7 +197,9 @@ bash scripts/setup_registry.sh
 curl http://localhost:5001/v2/
 ```
 
-Set `REGISTRY_URL=<this-machine-ip>:5001` in your `.env`.
+Set `REGISTRY_URL` in your `.env` (both formats are accepted):
+- `<this-machine-ip>:5001`
+- `http://<this-machine-ip>:5001/v2/`
 
 ---
 
@@ -194,13 +220,18 @@ All config is via environment variables (see `.env.example`):
 |----------|---------|-------------|
 | `SECRET_KEY` | dev value | Flask session secret — **change in production** |
 | `DATABASE_URL` | `sqlite:///orchard_ui.db` | SQLAlchemy DB URI |
-| `REGISTRY_URL` | `localhost:5001` | Local Docker registry host:port |
+| `REGISTRY_URL` | `localhost:5001` | Local Docker registry endpoint (`host:port` or `http://host:port/v2/`) |
 | `AGENT_TOKEN` | (empty) | Shared secret for TART agent auth — set same value on all nodes |
 | `VNC_DEFAULT_PASSWORD` | `admin` | TART default VNC password |
 | `WEBSOCKIFY_PORT_MIN` | `6900` | Start of SSH tunnel local port range |
 | `WEBSOCKIFY_PORT_MAX` | `6999` | End of SSH tunnel local port range |
 | `SSL_CERT` | — | Path to TLS certificate (PEM). Enables HTTPS when set. |
 | `SSL_KEY` | — | Path to TLS private key (PEM). |
+| `TRUST_PROXY` | `false` | Trust `X-Forwarded-*` headers when running behind nginx/caddy. |
+| `FORCE_HTTPS` | `false` | Redirect HTTP to HTTPS for non-localhost requests. |
+| `SESSION_COOKIE_SECURE` | `false` | Send session cookie over HTTPS only. |
+| `SESSION_COOKIE_HTTPONLY` | `true` | Mark session cookie HttpOnly. |
+| `SESSION_COOKIE_SAMESITE` | `Lax` | SameSite policy for session cookie. |
 | `VM_POLL_INTERVAL_MS` | `5000` | Dashboard auto-refresh interval (ms) |
 | `TART_IMAGES` | (5 cirruslabs images) | Comma-separated list of base images for the create form |
 

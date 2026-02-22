@@ -8,7 +8,7 @@
 import RFB from '/static/novnc/core/rfb.js';
 import { initLogging } from '/static/novnc/core/util/logging.js';
 
-const { wsHost, wsPort, vncUsername, password, vmName } = window.VNC_CONFIG;
+const { wsPath, vncUsername, password, vmName } = window.VNC_CONFIG;
 
 const indicator = document.getElementById('status-indicator');
 const overlay = document.getElementById('disconnect-overlay');
@@ -31,7 +31,7 @@ function hideOverlay() {
 setStatus('connecting');
 
 const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const wsUrl = `${wsScheme}://${wsHost}:${wsPort}`;
+const wsUrl = `${wsScheme}://${window.location.host}${wsPath}`;
 
 // Temporary deep diagnostics for Apple Screen Sharing compatibility issues.
 initLogging('debug');

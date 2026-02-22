@@ -3,6 +3,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
 
 class Config:
     """Base configuration. All values can be overridden by env vars."""
@@ -33,6 +39,12 @@ class Config:
     # TLS / HTTPS (self-signed cert for dev; leave blank to use plain HTTP)
     SSL_CERT = os.environ.get('SSL_CERT', '')   # path to certificate file (PEM)
     SSL_KEY  = os.environ.get('SSL_KEY',  '')   # path to private key file (PEM)
+    TRUST_PROXY = _env_bool('TRUST_PROXY', False)  # set true behind nginx/caddy
+    FORCE_HTTPS = _env_bool('FORCE_HTTPS', False)
+    PREFERRED_URL_SCHEME = 'https' if FORCE_HTTPS else 'http'
+    SESSION_COOKIE_SECURE = _env_bool('SESSION_COOKIE_SECURE', FORCE_HTTPS)
+    SESSION_COOKIE_HTTPONLY = _env_bool('SESSION_COOKIE_HTTPONLY', True)
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 
     # UI behavior
     VM_POLL_INTERVAL_MS = int(os.environ.get('VM_POLL_INTERVAL_MS', 5000))
