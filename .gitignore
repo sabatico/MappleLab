@@ -1,8 +1,12 @@
 .env
+.env.old
 .DS_Store
 cert.pem
 key.pem
 logs/
+instance/*.db
+instance/*.sqlite
+instance/*.sqlite3
 __pycache__/
 *.pyc
 .venv/

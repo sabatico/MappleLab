@@ -10,6 +10,16 @@ from app.tart_client import TartAPIError
 logger = logging.getLogger(__name__)
 
 
+def _agent_vm_name(item):
+    """Extract VM name from agent payload across key variants."""
+    return (item or {}).get('name') or (item or {}).get('Name')
+
+
+def _agent_vm_state(item):
+    """Extract VM state/status from agent payload across key variants."""
+    return (item or {}).get('status') or (item or {}).get('state') or (item or {}).get('State')
+
+
 def _normalize_agent_vm_status(status):
     """Map agent VM status values to the UI/DB status vocabulary."""
     value = (status or '').strip().lower()
@@ -31,13 +41,17 @@ def _sync_vm_status_from_agent(vm, node_vms_by_name=None):
             node_vms = current_app.tart.list_vms(vm.node)
         except TartAPIError:
             return False
-        node_vms_by_name = {item.get('name'): item for item in node_vms}
+        node_vms_by_name = {
+            _agent_vm_name(item): item
+            for item in node_vms
+            if _agent_vm_name(item)
+        }
 
     node_vm = node_vms_by_name.get(vm.name)
     if not node_vm:
         return False
 
-    normalized = _normalize_agent_vm_status(node_vm.get('status'))
+    normalized = _normalize_agent_vm_status(_agent_vm_state(node_vm))
     if normalized and vm.status != normalized:
         vm.status = normalized
         vm.status_detail = None
@@ -69,7 +83,11 @@ def list_vms():
             continue
         try:
             node_vms = current_app.tart.list_vms(vm.node)
-            node_vm_maps[vm.node_id] = {item.get('name'): item for item in node_vms}
+            node_vm_maps[vm.node_id] = {
+                _agent_vm_name(item): item
+                for item in node_vms
+                if _agent_vm_name(item)
+            }
         except TartAPIError:
             node_vm_maps[vm.node_id] = None
 

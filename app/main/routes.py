@@ -10,6 +10,58 @@ from app.tart_client import TartAPIError
 logger = logging.getLogger(__name__)
 
 
+def _agent_vm_name(item):
+    """Extract VM name from agent payload across key variants."""
+    return (item or {}).get('name') or (item or {}).get('Name')
+
+
+def _agent_vm_state(item):
+    """Extract VM state/status from agent payload across key variants."""
+    return (item or {}).get('status') or (item or {}).get('state') or (item or {}).get('State')
+
+
+def _reconcile_local_vms_for_user(user_id):
+    """
+    Best-effort reconciliation of local VM DB statuses from node agent /vms.
+    Used before first dashboard render to avoid stale status at page load.
+    """
+    vms = VM.query.filter_by(user_id=user_id).all()
+    local_vms = [vm for vm in vms if vm.node and vm.status in ('creating', 'running', 'stopped')]
+    if not local_vms:
+        return
+
+    changed = False
+    node_vm_maps = {}
+    for vm in local_vms:
+        if vm.node_id in node_vm_maps:
+            continue
+        try:
+            node_vms = current_app.tart.list_vms(vm.node)
+            node_vm_maps[vm.node_id] = {
+                _agent_vm_name(item): item
+                for item in node_vms
+                if _agent_vm_name(item)
+            }
+        except TartAPIError:
+            node_vm_maps[vm.node_id] = None
+
+    for vm in local_vms:
+        node_snapshot = node_vm_maps.get(vm.node_id) or {}
+        node_vm = node_snapshot.get(vm.name)
+        if not node_vm:
+            continue
+        node_state = (_agent_vm_state(node_vm) or '').strip().lower()
+        if node_state in ('running', 'stopped') and vm.status != node_state:
+            vm.status = node_state
+            vm.status_detail = None
+            if node_state == 'running':
+                vm.last_started_at = datetime.utcnow()
+            changed = True
+
+    if changed:
+        db.session.commit()
+
+
 def _redirect_after_action(vm_name):
     """Return to current page when possible; fall back to vm detail."""
     return redirect(request.referrer or url_for('main.vm_detail', vm_name=vm_name))
@@ -20,6 +72,7 @@ def _redirect_after_action(vm_name):
 def dashboard():
     """Main dashboard — lists VMs owned by the current user."""
     logger.debug("dashboard() — user=%s", current_user.username)
+    _reconcile_local_vms_for_user(current_user.id)
     vms = VM.query.filter_by(user_id=current_user.id).all()
     return render_template('main/dashboard.html', vms=vms)
 
@@ -79,8 +132,8 @@ def create_vm():
         vm.status = 'running'
         try:
             node_vms = current_app.tart.list_vms(node)
-            node_vm = next((item for item in node_vms if item.get('name') == name), None)
-            node_status = (node_vm or {}).get('status', '').strip().lower()
+            node_vm = next((item for item in node_vms if _agent_vm_name(item) == name), None)
+            node_status = (_agent_vm_state(node_vm) or '').strip().lower()
             if node_status in ('running', 'stopped'):
                 vm.status = node_status
         except TartAPIError as e:
