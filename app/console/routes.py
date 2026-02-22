@@ -1,5 +1,4 @@
 import logging
-import socket
 import threading
 import time
 from flask import render_template, redirect, url_for, flash, current_app, request
@@ -8,17 +7,22 @@ from app.console import bp
 from app.models import VM
 from app.tart_client import TartAPIError
 from app.extensions import sock
+import websocket
 
 logger = logging.getLogger(__name__)
 
 
-def _connect_local_tunnel(local_port, retries=8, delay=0.15):
-    """Best-effort connect to local tunnel listener with short retries."""
+def _connect_local_tunnel_ws(local_port, retries=8, delay=0.15):
+    """Best-effort websocket connect to local tunnel listener."""
     last_error = None
     for _ in range(retries):
         try:
-            return socket.create_connection(('127.0.0.1', local_port), timeout=2)
-        except OSError as e:
+            return websocket.create_connection(
+                f"ws://127.0.0.1:{local_port}",
+                timeout=2,
+                enable_multithread=True,
+            )
+        except Exception as e:
             last_error = e
             time.sleep(delay)
     raise last_error or RuntimeError('Failed to connect local tunnel')
@@ -121,64 +125,86 @@ def disconnect(vm_name):
 @sock.route('/console/ws/<vm_name>')
 def console_ws(ws, vm_name):
     """Same-origin websocket bridge: browser <-> local SSH tunnel socket."""
-    if not current_user.is_authenticated:
-        ws.close()
-        return
-
-    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first()
-    if not vm or vm.status != 'running':
-        ws.close()
-        return
-
-    local_port = current_app.tunnel_manager.get_tunnel_port(vm_name)
-    if not local_port:
-        ws.close()
-        return
-
+    logger.info("console_ws(%s) opened websocket request", vm_name)
     try:
-        tunnel_sock = _connect_local_tunnel(local_port)
-    except Exception as e:
-        logger.warning("console_ws(%s) failed to reach local tunnel %s: %s", vm_name, local_port, e)
-        ws.close()
-        return
+        if not current_user.is_authenticated:
+            logger.info("console_ws(%s) closing: unauthenticated websocket", vm_name)
+            ws.close()
+            return
 
-    closed = threading.Event()
+        vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first()
+        if not vm or vm.status != 'running':
+            logger.info(
+                "console_ws(%s) closing: vm missing or not running (vm=%s status=%s)",
+                vm_name,
+                bool(vm),
+                vm.status if vm else None,
+            )
+            ws.close()
+            return
 
-    def _ws_to_tcp():
+        local_port = current_app.tunnel_manager.get_tunnel_port(vm_name)
+        if not local_port:
+            logger.info("console_ws(%s) closing: no local tunnel port found", vm_name)
+            ws.close()
+            return
+
+        try:
+            tunnel_ws = _connect_local_tunnel_ws(local_port)
+        except Exception as e:
+            logger.warning("console_ws(%s) failed to reach local tunnel %s: %s", vm_name, local_port, e)
+            ws.close()
+            return
+
+        closed = threading.Event()
+
+        def _ws_to_tcp():
+            try:
+                while not closed.is_set():
+                    message = ws.receive()
+                    # simple-websocket can return None for non-data frames / keepalive.
+                    # Do not treat this as a disconnect by itself.
+                    if message is None:
+                        time.sleep(0.01)
+                        continue
+                    if isinstance(message, str):
+                        tunnel_ws.send(message)
+                    else:
+                        tunnel_ws.send(message, opcode=websocket.ABNF.OPCODE_BINARY)
+            except Exception:
+                pass
+            finally:
+                closed.set()
+                try:
+                    tunnel_ws.close()
+                except Exception:
+                    pass
+
+        t = threading.Thread(target=_ws_to_tcp, daemon=True)
+        t.start()
+
         try:
             while not closed.is_set():
-                message = ws.receive()
-                if message is None:
+                data = tunnel_ws.recv()
+                if data is None:
+                    logger.info("console_ws(%s) tunnel closed by remote endpoint", vm_name)
                     break
-                if isinstance(message, str):
-                    message = message.encode()
-                tunnel_sock.sendall(message)
+                ws.send(data)
         except Exception:
             pass
         finally:
             closed.set()
             try:
-                tunnel_sock.shutdown(socket.SHUT_RDWR)
+                tunnel_ws.close()
             except Exception:
                 pass
 
-    t = threading.Thread(target=_ws_to_tcp, daemon=True)
-    t.start()
-
-    try:
-        while not closed.is_set():
-            data = tunnel_sock.recv(4096)
-            if not data:
-                break
-            ws.send(data)
-    except Exception:
-        pass
-    finally:
-        closed.set()
         try:
-            tunnel_sock.close()
+            ws.close()
         except Exception:
             pass
+    except Exception:
+        logger.exception("console_ws(%s) unexpected bridge error", vm_name)
         try:
             ws.close()
         except Exception:
