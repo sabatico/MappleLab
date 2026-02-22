@@ -8,6 +8,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 - Multi-node Mac cloud — schedule VMs across multiple Mac Minis automatically
 - Create VMs from TART images (macOS/Linux)
 - Start/stop local VMs from the dashboard
+- Recover failed VMs by starting them again from UI
 - **Save & Shutdown** — push VM disk to local Docker registry, free the Mac node
 - **Resume** — pull VM from registry, start on any available Mac node
 - In-browser VNC console via noVNC + SSH tunnel
@@ -16,6 +17,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 
 VM states shown in UI: `creating`, `running`, `stopped`, `pushing`, `archived`, `pulling`, `failed`.
 Dashboard polling reconciles DB VM status with each node agent's VM list to avoid stale status labels.
+Delete operations are defensive: manager stops VNC + VM first, then deletes, to handle Tart's "running VM delete appears as not found" behavior.
 
 ## Architecture
 
@@ -27,7 +29,15 @@ VM disks stored in: Local Docker Registry (:5001)
 VM state tracked in: SQLite DB (orchard_ui.db)
 ```
 
-See `docs/refurbish_plan.md` for full architecture documentation.
+### Why This Architecture
+
+- Reverse proxy (Caddy/nginx) terminates TLS and upgrades WebSockets reliably; Flask/Gunicorn stay on local HTTP.
+- Manager exposes VNC as same-origin `/console/ws/<vm>` so browser talks only to manager `wss://` endpoint.
+- Apple VNC/ARD (`RFB 003.889`) uses browser cryptography APIs that require secure context, so remote VNC must be over HTTPS.
+- SSH tunnel + node-local websockify keeps node VNC ports off the LAN and avoids direct browser access to per-node VNC.
+- DB state is persisted for UX, but agent reconciliation on load/poll is the source of truth for actual VM runtime state.
+
+See `docs/5.Production_refurbish_vnc.md` and `docs/refurbish_plan.md` for deeper technical notes.
 
 ---
 
@@ -161,6 +171,7 @@ SESSION_COOKIE_SAMESITE=Lax
 ```
 
 The console now uses same-origin websocket path `/console/ws/<vm_name>`, so browser VNC traffic stays on manager HTTPS/WSS endpoint.
+In production, prefer `./run.sh` (it loads `.env` and automatically uses gunicorn when `FLASK_ENV=production`).
 
 #### Simple Caddy option (LAN/VPN)
 
@@ -262,11 +273,11 @@ flask shell
 ---
 
 ## Mac Node Setup (each Mac)
-###DISABLE Keychain locking on every mac
+### Disable keychain locking on each Mac
 security set-keychain-settings -t 0 login.keychain
 
-### enable automatic log in in ui ( this is to enable keychain access withto uscripts that cotain plain text passwords)
-Enable Automatic Login: Go to System Settings > Users & Groups and set "Automatic login" to your admin user.
+### Enable automatic login
+Set automatic login in System Settings > Users & Groups so Tart/keychain-backed operations can run after reboot without an interactive login prompt.
 
 
 
