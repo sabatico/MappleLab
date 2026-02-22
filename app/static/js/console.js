@@ -29,7 +29,8 @@ function hideOverlay() {
 
 setStatus('connecting');
 
-const wsUrl = `ws://${wsHost}:${wsPort}`;
+const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const wsUrl = `${wsScheme}://${wsHost}:${wsPort}`;
 
 const rfb = new RFB(
     document.getElementById('vnc-container'),

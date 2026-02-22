@@ -88,11 +88,16 @@ class TunnelManager:
                     try:
                         chan = transport.open_channel(
                             'direct-tcpip',
-                            (node.host, remote_port),
+                            # Connect from the node to its own local listener.
+                            # Using localhost is more reliable than node LAN IP.
+                            ('127.0.0.1', remote_port),
                             ('localhost', local_port),
                         )
                     except Exception as e:
-                        logger.error('Failed to open SSH channel for %s: %s', vm_name, e)
+                        logger.error(
+                            'Failed to open SSH channel for %s to 127.0.0.1:%d: %s',
+                            vm_name, remote_port, e,
+                        )
                         client_sock.close()
                         continue
                     threading.Thread(
