@@ -47,10 +47,11 @@ const rfb = new RFB(
 );
 
 rfb.scaleViewport = true;
-rfb.resizeSession = false;
-rfb.clipViewport = false;
-rfb.qualityLevel = 6;
-rfb.compressionLevel = 2;
+rfb.resizeSession = true;
+rfb.clipViewport = true;
+// Fast profile: lowest usable quality + strongest compression.
+rfb.qualityLevel = 1;
+rfb.compressionLevel = 9;
 
 rfb.addEventListener('connect', () => {
     setStatus('connected');
