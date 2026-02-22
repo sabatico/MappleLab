@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-grid-3x3-gap"></i> Virtual Machines</h2>
+    <a href="{{ url_for('main.create_vm') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Create VM
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Name</th>
+                    <th>Image</th>
+                    <th>Status</th>
+                    <th>Node</th>
+                    <th style="width: 300px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody
+                hx-get="{{ url_for('api.list_vms') }}"
+                hx-trigger="every {{ poll_interval_ms // 1000 }}s"
+                hx-swap="innerHTML"
+            >
+                {# Initial render — same partial used for HTMX updates #}
+                {% include '_partials/vm_table.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

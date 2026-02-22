@@ -1,0 +1,118 @@
+{# Partial: table body rows for VM list.
+   Used for both initial render and HTMX polling updates.
+   Expects: vms — list of VM ORM model objects #}
+
+{% for vm in vms %}
+<tr>
+    <td>
+        <a href="{{ url_for('main.vm_detail', vm_name=vm.name) }}"
+           class="text-decoration-none fw-bold">
+            {{ vm.name }}
+        </a>
+    </td>
+    <td>
+        <small class="text-muted">{{ vm.base_image | default('—') }}</small>
+    </td>
+    <td>
+        {% include '_partials/vm_status_badge.html' %}
+    </td>
+    <td>{{ vm.node.name if vm.node else '—' }}</td>
+    <td>
+        {# Running: Console + Stop + Save & Shutdown #}
+        {% if vm.status == 'running' %}
+        <a href="{{ url_for('console.vnc', vm_name=vm.name) }}"
+           class="btn btn-sm btn-success me-1"
+           title="Open VNC Console">
+            <i class="bi bi-terminal"></i> Console
+        </a>
+        <form method="POST"
+              action="{{ url_for('main.stop_vm', vm_name=vm.name) }}"
+              style="display: inline-block;"
+              onsubmit="return confirm('Stop VM \'{{ vm.name }}\'?')">
+            <button type="submit" class="btn btn-sm btn-outline-warning me-1"
+                    title="Stop VM">
+                <i class="bi bi-stop-circle"></i> Stop
+            </button>
+        </form>
+        <form method="POST"
+              action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
+              style="display: inline-block;"
+              onsubmit="return confirm('Save &amp; Shutdown \'{{ vm.name }}\'?\nThis will push the VM disk to the registry (may take a few minutes).')">
+            <button type="submit" class="btn btn-sm btn-warning me-1"
+                    title="Save &amp; Shutdown">
+                <i class="bi bi-cloud-upload"></i> Save &amp; Shutdown
+            </button>
+        </form>
+
+        {# Stopped: Start #}
+        {% elif vm.status == 'stopped' %}
+        <form method="POST"
+              action="{{ url_for('main.start_vm', vm_name=vm.name) }}"
+              style="display: inline-block;">
+            <button type="submit" class="btn btn-sm btn-primary me-1"
+                    title="Start VM">
+                <i class="bi bi-play-circle"></i> Start
+            </button>
+        </form>
+
+        {# Archived: Resume #}
+        {% elif vm.status == 'archived' %}
+        <form method="POST"
+              action="{{ url_for('main.resume_vm', vm_name=vm.name) }}"
+              style="display: inline-block;">
+            <button type="submit" class="btn btn-sm btn-primary me-1"
+                    title="Resume VM from registry">
+                <i class="bi bi-play-circle"></i> Resume
+            </button>
+        </form>
+
+        {# In-progress: spinner, no actions #}
+        {% elif vm.status in ('pushing', 'pulling', 'creating') %}
+        <span class="btn btn-sm btn-outline-secondary disabled me-1">
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+            {{ vm.status | title }}&hellip;
+        </span>
+
+        {# Failed: show red label #}
+        {% elif vm.status == 'failed' %}
+        <span class="badge bg-danger me-1" title="{{ vm.status_detail | default('') }}">
+            <i class="bi bi-exclamation-triangle"></i> Error
+        </span>
+
+        {% else %}
+        <button class="btn btn-sm btn-outline-secondary me-1" disabled>
+            <i class="bi bi-terminal"></i> Console
+        </button>
+        {% endif %}
+
+        {# Detail button (always shown) #}
+        <a href="{{ url_for('main.vm_detail', vm_name=vm.name) }}"
+           class="btn btn-sm btn-outline-info me-1"
+           title="View Details">
+            <i class="bi bi-info-circle"></i>
+        </a>
+
+        {# Delete button (only when not in a transient op) #}
+        {% if vm.status not in ('pushing', 'pulling', 'creating') %}
+        <form method="POST"
+              action="{{ url_for('main.delete_vm', vm_name=vm.name) }}"
+              style="display: inline-block;"
+              onsubmit="return confirm('Delete VM \'{{ vm.name }}\'? This cannot be undone.')">
+            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    title="Delete VM">
+                <i class="bi bi-trash"></i>
+            </button>
+        </form>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if not vms %}
+<tr>
+    <td colspan="5" class="text-center text-muted py-4">
+        No virtual machines found.
+        <a href="{{ url_for('main.create_vm') }}">Create one?</a>
+    </td>
+</tr>
+{% endif %}

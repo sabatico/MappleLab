@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Register — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-person-plus"></i> Register</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               required autofocus autocomplete="username"
+                               pattern="[a-zA-Z0-9_-]+"
+                               title="Letters, numbers, hyphens, underscores only">
+                        <div class="form-text">Letters, numbers, hyphens and underscores only.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password"
+                               required minlength="8" autocomplete="new-password">
+                        <div class="form-text">Minimum 8 characters.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-person-check"></i> Create Account
+                    </button>
+                </form>
+                <hr>
+                <p class="text-center mb-0 text-muted small">
+                    Already have an account?
+                    <a href="{{ url_for('auth.login') }}">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

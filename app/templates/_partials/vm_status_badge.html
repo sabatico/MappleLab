@@ -1,0 +1,24 @@
+{# Expects: vm — ORM model with .status attribute #}
+{% if vm.status == 'running' %}
+    <span class="badge bg-success"><i class="bi bi-play-fill"></i> Running</span>
+{% elif vm.status == 'stopped' %}
+    <span class="badge bg-warning text-dark"><i class="bi bi-stop-fill"></i> Stopped</span>
+{% elif vm.status == 'archived' %}
+    <span class="badge bg-secondary"><i class="bi bi-archive"></i> Archived</span>
+{% elif vm.status == 'pushing' %}
+    <span class="badge bg-info text-dark">
+        <i class="bi bi-cloud-upload"></i> Saving&hellip;
+    </span>
+{% elif vm.status == 'pulling' %}
+    <span class="badge bg-info text-dark">
+        <i class="bi bi-cloud-download"></i> Resuming&hellip;
+    </span>
+{% elif vm.status == 'creating' %}
+    <span class="badge bg-warning text-dark">
+        <i class="bi bi-hourglass-split"></i> Creating&hellip;
+    </span>
+{% elif vm.status == 'failed' %}
+    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
+{% else %}
+    <span class="badge bg-secondary">{{ vm.status | default('Unknown') }}</span>
+{% endif %}

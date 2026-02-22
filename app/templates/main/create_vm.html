@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Create VM — Orchard UI{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Create VM</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Create Virtual Machine</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.create_vm') }}">
+
+                    <!-- VM Name -->
+                    <div class="mb-3">
+                        <label for="name" class="form-label">VM Name</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               required placeholder="e.g., my-dev-machine"
+                               pattern="[a-zA-Z0-9][a-zA-Z0-9._-]*"
+                               title="Letters, numbers, dots, hyphens, underscores. Start with letter/number.">
+                        <div class="form-text">
+                            Unique name for this VM. Letters, numbers, hyphens, underscores.
+                        </div>
+                    </div>
+
+                    <!-- Image Selection -->
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Image</label>
+                        <select class="form-select" id="image" name="image" required>
+                            <option value="">Select an image…</option>
+                            {% for img in images %}
+                            <option value="{{ img }}">{{ img }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">
+                            TART VM image from OCI registry.
+                        </div>
+                    </div>
+
+                    <!-- CPU (optional) -->
+                    <div class="mb-3">
+                        <label for="cpu" class="form-label">
+                            CPU Cores <small class="text-muted">(optional)</small>
+                        </label>
+                        <input type="number" class="form-control" id="cpu" name="cpu"
+                               min="1" max="16" placeholder="Default: node decides">
+                    </div>
+
+                    <!-- Memory (optional) -->
+                    <div class="mb-3">
+                        <label for="memory" class="form-label">
+                            Memory (MB) <small class="text-muted">(optional)</small>
+                        </label>
+                        <input type="number" class="form-control" id="memory" name="memory"
+                               min="1024" step="1024" placeholder="Default: node decides">
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Create VM
+                        </button>
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

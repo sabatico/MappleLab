@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vm.name }} — Orchard UI{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">{{ vm.name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- VM Info Card -->
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ vm.name }}</h4>
+                {# Status badge — polls itself every 3s when an async op is running #}
+                <span id="status-area"
+                    {% if vm.status in ('pushing', 'pulling', 'creating') %}
+                    hx-get="{{ url_for('api.vm_status', vm_name=vm.name) }}"
+                    hx-trigger="every 3s"
+                    hx-swap="outerHTML"
+                    hx-target="#status-area"
+                    {% endif %}
+                >
+                    {% include '_partials/vm_status_badge.html' %}
+                </span>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr><th>Image</th><td>{{ vm.base_image | default('—') }}</td></tr>
+                    <tr><th>Node</th><td>{{ vm.node.name if vm.node else '—' }}</td></tr>
+                    <tr>
+                        <th>IP Address</th>
+                        <td>{{ ip_address | default('Not available') }}</td>
+                    </tr>
+                    <tr>
+                        <th>CPU</th>
+                        <td>{{ vm.cpu if vm.cpu else '—' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Memory</th>
+                        <td>{{ (vm.memory_mb | string + ' MB') if vm.memory_mb else '—' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Created</th>
+                        <td><small>{{ vm.created_at.strftime('%Y-%m-%d %H:%M') if vm.created_at else '—' }}</small></td>
+                    </tr>
+                    <tr>
+                        <th>Last Saved</th>
+                        <td><small>{{ vm.last_saved_at.strftime('%Y-%m-%d %H:%M') if vm.last_saved_at else '—' }}</small></td>
+                    </tr>
+                    {% if vm.status == 'failed' and vm.status_detail %}
+                    <tr>
+                        <th class="text-danger">Error</th>
+                        <td class="text-danger small">{{ vm.status_detail }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+
+                {# Long-operation progress indicator #}
+                {% if vm.status in ('pushing', 'pulling') %}
+                <div class="alert alert-info py-2 mb-3">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    {% if vm.status == 'pushing' %}
+                    Saving VM to registry&hellip; This may take several minutes.
+                    {% else %}
+                    Resuming VM from registry&hellip; This may take several minutes.
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 flex-wrap mt-2">
+                    {# Running: Console + Stop + Save & Shutdown #}
+                    {% if vm.status == 'running' %}
+                    <a href="{{ url_for('console.vnc', vm_name=vm.name) }}"
+                       class="btn btn-success">
+                        <i class="bi bi-terminal"></i> Open Console
+                    </a>
+                    <form method="POST"
+                          action="{{ url_for('main.stop_vm', vm_name=vm.name) }}"
+                          onsubmit="return confirm('Stop VM \'{{ vm.name }}\'?')">
+                        <button class="btn btn-outline-warning">
+                            <i class="bi bi-stop-circle"></i> Stop
+                        </button>
+                    </form>
+                    <form method="POST"
+                          action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
+                          onsubmit="return confirm('Save &amp; Shutdown \'{{ vm.name }}\'?\nThis pushes the disk to the registry (may take a few minutes).')">
+                        <button class="btn btn-warning">
+                            <i class="bi bi-cloud-upload"></i> Save &amp; Shutdown
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# Stopped: Start #}
+                    {% if vm.status == 'stopped' %}
+                    <form method="POST"
+                          action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-play-circle"></i> Start
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# Archived: Resume #}
+                    {% if vm.status == 'archived' %}
+                    <form method="POST"
+                          action="{{ url_for('main.resume_vm', vm_name=vm.name) }}">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-play-circle"></i> Resume
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# Disconnect console if active tunnel #}
+                    {% if console_port %}
+                    <form method="POST"
+                          action="{{ url_for('console.disconnect', vm_name=vm.name) }}">
+                        <button class="btn btn-outline-warning">
+                            <i class="bi bi-x-circle"></i> Disconnect Console
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# Delete (only when not in transient state) #}
+                    {% if vm.status not in ('pushing', 'pulling', 'creating') %}
+                    <form method="POST"
+                          action="{{ url_for('main.delete_vm', vm_name=vm.name) }}"
+                          onsubmit="return confirm('Delete VM \'{{ vm.name }}\'?')">
+                        <button class="btn btn-outline-danger">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registry info -->
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-hdd-network"></i> Registry</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-1">Registry tag</p>
+                <code>{{ vm.registry_tag | default('Not set') }}</code>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+/* Custom overrides on top of Bootstrap 5 dark theme. */
+
+.card {
+    border-color: #333;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.8rem;
+    padding: 0.4em 0.6em;
+}
+
+.navbar-brand i {
+    margin-right: 4px;
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+.alert {
+    margin-bottom: 0.5rem;
+}

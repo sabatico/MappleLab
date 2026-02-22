@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Nodes — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-hdd-network"></i> Mac Nodes</h2>
+    <button class="btn btn-primary" data-bs-toggle="collapse"
+            data-bs-target="#addNodeForm">
+        <i class="bi bi-plus-circle"></i> Add Node
+    </button>
+</div>
+
+{# Add node form (collapsed by default) #}
+<div class="collapse mb-4 {% if show_add_form %}show{% endif %}" id="addNodeForm">
+    <div class="card">
+        <div class="card-header">Add Node</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('nodes.add_node') }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" name="name" class="form-control" required
+                               placeholder="mac-mini-01">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Host / IP</label>
+                        <input type="text" name="host" class="form-control" required
+                               placeholder="192.168.1.20">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">SSH User</label>
+                        <input type="text" name="ssh_user" class="form-control" required
+                               placeholder="admin">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SSH Key Path</label>
+                        <input type="text" name="ssh_key_path" class="form-control" required
+                               placeholder="/home/user/.ssh/id_ed25519">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Agent Port</label>
+                        <input type="number" name="agent_port" class="form-control" value="7000">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Max VMs</label>
+                        <input type="number" name="max_vms" class="form-control" value="2">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Add Node
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Node table #}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Name</th>
+                    <th>Host</th>
+                    <th>Status</th>
+                    <th>VMs</th>
+                    <th>Free Slots</th>
+                    <th>Disk Free</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for node, health in nodes_health %}
+                <tr class="{{ '' if node.active else 'table-secondary opacity-50' }}">
+                    <td class="fw-bold">{{ node.name }}</td>
+                    <td><small>{{ node.host }}:{{ node.agent_port }}</small></td>
+                    <td>
+                        {% if health %}
+                            <span class="badge bg-success">Online</span>
+                        {% else %}
+                            <span class="badge bg-danger">Unreachable</span>
+                        {% endif %}
+                        {% if not node.active %}
+                            <span class="badge bg-secondary ms-1">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if health %}
+                            {{ health.running_vms }} / {{ health.max_vms }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if health %}
+                            {{ health.free_slots }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if health and health.disk_free_gb is defined %}
+                            {{ '%.1f' | format(health.disk_free_gb) }} GB
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST"
+                              action="{{ url_for('nodes.toggle_node', node_id=node.id) }}"
+                              style="display: inline-block;">
+                            <button type="submit"
+                                    class="btn btn-sm {{ 'btn-outline-warning' if node.active else 'btn-outline-success' }}">
+                                {% if node.active %}
+                                <i class="bi bi-pause-circle"></i> Deactivate
+                                {% else %}
+                                <i class="bi bi-play-circle"></i> Activate
+                                {% endif %}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        No nodes registered.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
