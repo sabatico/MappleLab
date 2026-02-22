@@ -159,6 +159,7 @@ def console_ws(ws, vm_name):
         closed = threading.Event()
 
         def _ws_to_tcp():
+            forwarded = 0
             try:
                 while not closed.is_set():
                     message = ws.receive()
@@ -171,8 +172,11 @@ def console_ws(ws, vm_name):
                         tunnel_ws.send(message)
                     else:
                         tunnel_ws.send(message, opcode=websocket.ABNF.OPCODE_BINARY)
+                    forwarded += 1
+                    if forwarded == 1:
+                        logger.info("console_ws(%s) first browser->tunnel frame forwarded", vm_name)
             except Exception:
-                pass
+                logger.exception("console_ws(%s) browser->tunnel bridge error", vm_name)
             finally:
                 closed.set()
                 try:
@@ -183,6 +187,7 @@ def console_ws(ws, vm_name):
         t = threading.Thread(target=_ws_to_tcp, daemon=True)
         t.start()
 
+        recv_count = 0
         try:
             while not closed.is_set():
                 data = tunnel_ws.recv()
@@ -190,8 +195,11 @@ def console_ws(ws, vm_name):
                     logger.info("console_ws(%s) tunnel closed by remote endpoint", vm_name)
                     break
                 ws.send(data)
+                recv_count += 1
+                if recv_count == 1:
+                    logger.info("console_ws(%s) first tunnel->browser frame forwarded", vm_name)
         except Exception:
-            pass
+            logger.exception("console_ws(%s) tunnel->browser bridge error", vm_name)
         finally:
             closed.set()
             try:
@@ -202,7 +210,7 @@ def console_ws(ws, vm_name):
         try:
             ws.close()
         except Exception:
-            pass
+            logger.exception("console_ws(%s) websocket close error", vm_name)
     except Exception:
         logger.exception("console_ws(%s) unexpected bridge error", vm_name)
         try:
