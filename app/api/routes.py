@@ -33,7 +33,7 @@ def _sync_vm_status_from_agent(vm, node_vms_by_name=None):
     Best-effort status reconciliation for local node-backed VMs.
     Keeps DB status aligned with actual agent VM state.
     """
-    if not vm.node or vm.status not in ('creating', 'running', 'stopped'):
+    if not vm.node or vm.status not in ('creating', 'running', 'stopped', 'failed'):
         return False
 
     if node_vms_by_name is None:
@@ -76,7 +76,7 @@ def list_vms():
 
     # Reconcile stale local statuses from agent-reported VM states.
     changed = False
-    local_vms = [vm for vm in vms if vm.node and vm.status in ('creating', 'running', 'stopped')]
+    local_vms = [vm for vm in vms if vm.node and vm.status in ('creating', 'running', 'stopped', 'failed')]
     node_vm_maps = {}
     for vm in local_vms:
         if vm.node_id in node_vm_maps:

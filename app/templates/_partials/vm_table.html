@@ -78,6 +78,16 @@
         <span class="badge bg-danger me-1" title="{{ vm.status_detail | default('') }}">
             <i class="bi bi-exclamation-triangle"></i> Error
         </span>
+        {% if vm.node %}
+        <form method="POST"
+              action="{{ url_for('main.start_vm', vm_name=vm.name) }}"
+              style="display: inline-block;">
+            <button type="submit" class="btn btn-sm btn-outline-primary me-1"
+                    title="Try to recover and start VM">
+                <i class="bi bi-play-circle"></i> Start
+            </button>
+        </form>
+        {% endif %}
 
         {% else %}
         <button class="btn btn-sm btn-outline-secondary me-1" disabled>

@@ -18,7 +18,7 @@
                 <h4 class="mb-0">{{ vm.name }}</h4>
                 {# Status badge — polls itself every 3s when an async op is running #}
                 <span id="status-area"
-                    {% if vm.status in ('pushing', 'pulling', 'creating') %}
+                    {% if vm.status in ('pushing', 'pulling', 'creating') or (vm.status == 'failed' and vm.node) %}
                     hx-get="{{ url_for('api.vm_status', vm_name=vm.name) }}"
                     hx-trigger="every 3s"
                     hx-swap="outerHTML"
@@ -95,12 +95,12 @@
                     </form>
                     {% endif %}
 
-                    {# Stopped: Start #}
-                    {% if vm.status == 'stopped' %}
+                    {# Stopped/Failed: Start (recovery) #}
+                    {% if vm.status in ('stopped', 'failed') and vm.node %}
                     <form method="POST"
                           action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
                         <button class="btn btn-primary">
-                            <i class="bi bi-play-circle"></i> Start
+                            <i class="bi bi-play-circle"></i> {{ 'Recover & Start' if vm.status == 'failed' else 'Start' }}
                         </button>
                     </form>
                     {% endif %}

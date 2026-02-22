@@ -4,6 +4,19 @@ from app.tart_client import TartClient, TartAPIError
 logger = logging.getLogger(__name__)
 
 
+def _normalize_registry_url(registry_url):
+    """
+    Normalize registry host for OCI tags.
+    Tart expects host[:port] without http(s) scheme.
+    """
+    value = (registry_url or '').strip().rstrip('/')
+    if value.startswith('http://'):
+        value = value[len('http://'):]
+    elif value.startswith('https://'):
+        value = value[len('https://'):]
+    return value
+
+
 class NodeManager:
     """
     High-level VM scheduling across TART nodes.
@@ -52,4 +65,5 @@ class NodeManager:
 
     def registry_tag_for(self, username, vm_name, registry_url):
         """Build the full OCI registry path for a VM."""
-        return f'{registry_url}/{username}/{vm_name}:latest'
+        base = _normalize_registry_url(registry_url)
+        return f'{base}/{username}/{vm_name}:latest'

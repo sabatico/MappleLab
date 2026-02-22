@@ -25,13 +25,23 @@ def _agent_vm_state(item):
     return (item or {}).get('status') or (item or {}).get('state') or (item or {}).get('State')
 
 
+def _sanitize_registry_tag(tag):
+    """Ensure OCI registry tag does not contain URL scheme."""
+    value = (tag or '').strip()
+    if value.startswith('http://'):
+        return value[len('http://'):]
+    if value.startswith('https://'):
+        return value[len('https://'):]
+    return value
+
+
 def _reconcile_local_vms_for_user(user_id):
     """
     Best-effort reconciliation of local VM DB statuses from node agent /vms.
     Used before first dashboard render to avoid stale status at page load.
     """
     vms = VM.query.filter_by(user_id=user_id).all()
-    local_vms = [vm for vm in vms if vm.node and vm.status in ('creating', 'running', 'stopped')]
+    local_vms = [vm for vm in vms if vm.node and vm.status in ('creating', 'running', 'stopped', 'failed')]
     if not local_vms:
         return
 
@@ -204,7 +214,10 @@ def save_vm(vm_name):
 
     node = vm.node
     try:
-        current_app.tart.save_vm(node, vm_name, vm.registry_tag)
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        current_app.tart.save_vm(node, vm_name, registry_tag)
         vm.status = 'pushing'
         db.session.commit()
         logger.info("save_vm() — %r pushing to registry", vm_name)
@@ -231,7 +244,10 @@ def resume_vm(vm_name):
         return redirect(url_for('main.dashboard'))
 
     try:
-        current_app.tart.restore_vm(node, vm_name, vm.registry_tag)
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        current_app.tart.restore_vm(node, vm_name, registry_tag)
         vm.status = 'pulling'
         vm.node_id = node.id
         db.session.commit()
@@ -249,12 +265,27 @@ def resume_vm(vm_name):
 def start_vm(vm_name):
     """Start a local VM currently in stopped state."""
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
-    if vm.status != 'stopped':
-        flash(f'VM is not stopped (status: {vm.status}).', 'warning')
+    if vm.status not in ('stopped', 'failed'):
+        flash(f'VM is not startable (status: {vm.status}).', 'warning')
         return _redirect_after_action(vm_name)
     if not vm.node:
         flash('VM has no assigned node. Use Resume for archived VMs.', 'warning')
         return _redirect_after_action(vm_name)
+
+    # If VM is already running/stopped on node, recover status first.
+    try:
+        node_vms = current_app.tart.list_vms(vm.node)
+        node_vm = next((item for item in node_vms if _agent_vm_name(item) == vm_name), None)
+        node_state = (_agent_vm_state(node_vm) or '').strip().lower()
+        if node_state == 'running':
+            vm.status = 'running'
+            vm.status_detail = None
+            vm.last_started_at = datetime.utcnow()
+            db.session.commit()
+            flash(f'VM "{vm_name}" is already running; status was recovered.', 'info')
+            return _redirect_after_action(vm_name)
+    except TartAPIError:
+        pass
 
     try:
         current_app.tart.start_vm(vm.node, vm_name)
