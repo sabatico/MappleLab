@@ -9,6 +9,11 @@ from app.tart_client import TartAPIError
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_VM_CPU = 4
+DEFAULT_VM_MEMORY_MB = 4096
+MAX_VM_CPU = 8
+MAX_VM_MEMORY_MB = 16384
+
 
 def _agent_vm_name(item):
     """Extract VM name from agent payload across key variants."""
@@ -90,6 +95,17 @@ def create_vm():
     image = request.form.get('image', '').strip()
     cpu = request.form.get('cpu', type=int)
     memory = request.form.get('memory', type=int)
+    cpu = cpu or DEFAULT_VM_CPU
+    memory = memory or DEFAULT_VM_MEMORY_MB
+
+    if cpu < 1 or cpu > MAX_VM_CPU:
+        flash(f'CPU must be between 1 and {MAX_VM_CPU}.', 'warning')
+        return render_template('main/create_vm.html',
+                               images=current_app.config['TART_IMAGES'])
+    if memory < 1024 or memory > MAX_VM_MEMORY_MB:
+        flash(f'Memory must be between 1024 and {MAX_VM_MEMORY_MB} MB.', 'warning')
+        return render_template('main/create_vm.html',
+                               images=current_app.config['TART_IMAGES'])
 
     logger.info("create_vm() POST — name=%r, image=%r, cpu=%r, memory=%r",
                 name, image, cpu, memory)
