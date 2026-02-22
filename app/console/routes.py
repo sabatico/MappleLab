@@ -157,12 +157,14 @@ def console_ws(ws, vm_name):
             return
 
         closed = threading.Event()
+        ws_io_lock = threading.Lock()
 
         def _ws_to_tcp():
             forwarded = 0
             try:
                 while not closed.is_set():
-                    message = ws.receive()
+                    with ws_io_lock:
+                        message = ws.receive()
                     # simple-websocket can return None for non-data frames / keepalive.
                     # Do not treat this as a disconnect by itself.
                     if message is None:
@@ -194,7 +196,8 @@ def console_ws(ws, vm_name):
                 if data is None:
                     logger.info("console_ws(%s) tunnel closed by remote endpoint", vm_name)
                     break
-                ws.send(data)
+                with ws_io_lock:
+                    ws.send(data)
                 recv_count += 1
                 if recv_count == 1:
                     logger.info("console_ws(%s) first tunnel->browser frame forwarded", vm_name)
@@ -208,12 +211,14 @@ def console_ws(ws, vm_name):
                 pass
 
         try:
-            ws.close()
+            with ws_io_lock:
+                ws.close()
         except Exception:
             logger.exception("console_ws(%s) websocket close error", vm_name)
     except Exception:
         logger.exception("console_ws(%s) unexpected bridge error", vm_name)
         try:
-            ws.close()
+            with ws_io_lock:
+                ws.close()
         except Exception:
             pass

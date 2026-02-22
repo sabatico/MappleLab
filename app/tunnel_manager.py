@@ -71,6 +71,9 @@ class TunnelManager:
         )
 
         transport = ssh.get_transport()
+        if transport:
+            # Keep SSH transport alive to reduce idle disconnects.
+            transport.set_keepalive(20)
         stop_event = threading.Event()
 
         def _forward():
