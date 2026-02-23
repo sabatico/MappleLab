@@ -89,6 +89,11 @@ def _normalize_async_error(raw_error):
             'Registry storage is full (no space left on device). '
             'Free space in the registry data volume and retry.'
         )
+    if 'could not connect to the server' in lowered:
+        return (
+            'Destination node could not reach the registry server. '
+            'Verify REGISTRY_URL uses manager IP/hostname (not localhost) and is reachable from that node.'
+        )
     if len(text) > 220:
         text = f'{text[:217]}...'
     return text

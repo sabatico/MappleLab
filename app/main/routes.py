@@ -71,12 +71,25 @@ def _sanitize_registry_tag(tag):
         parts.pop(1)
     elif parts and parts[0].lower() == 'v2':
         parts.pop(0)
+
+    # Auto-heal legacy tags that still point to localhost by switching to
+    # configured registry authority when it is non-localhost.
+    if parts:
+        configured_authority = _registry_authority_from_config()
+        configured_host = (urlparse(f'//{configured_authority}').hostname or '').lower() if configured_authority else ''
+        current_host = (urlparse(f'//{parts[0]}').hostname or '').lower()
+        if (
+            current_host in ('localhost', '127.0.0.1')
+            and configured_host
+            and configured_host not in ('localhost', '127.0.0.1')
+        ):
+            parts[0] = configured_authority
     return '/'.join(parts)
 
 
-def _registry_host_from_config():
+def _registry_authority_from_config():
     """
-    Extract registry host from REGISTRY_URL.
+    Extract registry authority (host[:port]) from REGISTRY_URL.
     Accepts host:port or http(s)://host:port[/...].
     """
     value = (current_app.config.get('REGISTRY_URL') or '').strip()
@@ -84,9 +97,16 @@ def _registry_host_from_config():
         return None
     if value.startswith(('http://', 'https://')):
         parsed = urlparse(value)
-        return (parsed.hostname or '').strip() or None
+        return (parsed.netloc or '').strip() or None
     parsed = urlparse(f'//{value}')
-    return (parsed.hostname or '').strip() or None
+    return (parsed.netloc or '').strip() or None
+
+
+def _registry_host_from_config():
+    authority = _registry_authority_from_config()
+    if not authority:
+        return None
+    return (urlparse(f'//{authority}').hostname or '').strip() or None
 
 
 def _registry_node_for_vm(vm):
