@@ -5,7 +5,7 @@
 - [x] Module 1: Add schema tables and shared usage-event helpers.
 - [x] Module 2: Instrument VM status and VNC lifecycle writes.
 - [x] Module 3: Build usage aggregation service + admin Usage tab UI.
-- [ ] Module 4: Validation pass, lint/test checks, and final polish.
+- [x] Module 4: Validation pass, lint/test checks, and final polish.
 
 ## [x] Goals
 
