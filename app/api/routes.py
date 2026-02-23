@@ -77,7 +77,14 @@ def _normalize_async_error(raw_error):
     """
     text = (raw_error or 'Unknown error').strip()
     lowered = text.lower()
-    if 'no space left on device' in lowered:
+    if (
+        'no space left on device' in lowered
+        or 'err":28' in lowered
+        or 'err\\":28' in lowered
+        or "'err': 28" in lowered
+        or 'errno 28' in lowered
+        or 'enospc' in lowered
+    ):
         return (
             'Registry storage is full (no space left on device). '
             'Free space in the registry data volume and retry.'
