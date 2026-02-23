@@ -3,6 +3,7 @@ import threading
 import time
 from flask import render_template, redirect, url_for, flash, current_app, request
 from flask_login import login_required, current_user
+from urllib.parse import quote
 from simple_websocket.errors import ConnectionClosed
 from app.console import bp
 from app.models import VM
@@ -188,7 +189,12 @@ def download_vncloc(vm_name):
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     manager_host = request.host.split(':', 1)[0]
-    vnc_url = f'vnc://{manager_host}:{proxy_port}'
+    vnc_username = quote(current_app.config.get('VNC_DEFAULT_USERNAME', ''), safe='')
+    vnc_password = quote(current_app.config.get('VNC_DEFAULT_PASSWORD', ''), safe='')
+    if vnc_username or vnc_password:
+        vnc_url = f'vnc://{vnc_username}:{vnc_password}@{manager_host}:{proxy_port}'
+    else:
+        vnc_url = f'vnc://{manager_host}:{proxy_port}'
     vncloc_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
