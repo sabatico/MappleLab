@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.admin import bp
 from app.extensions import db, bcrypt
 from app.models import User, VM, AppSettings
+from app.registry_inventory import storage_breakdown, delete_orphan_by_digest
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 from app.utils import admin_required
@@ -49,6 +50,10 @@ def _int_field(name, default):
 
 def _redirect_overview():
     return redirect(request.referrer or url_for('admin.overview'))
+
+
+def _redirect_registry_storage():
+    return redirect(request.referrer or url_for('admin.registry_storage'))
 
 
 def _upsert_settings_from_form():
@@ -132,6 +137,50 @@ def overview():
         status_groups=status_groups,
         op_snapshots=op_snapshots,
     )
+
+
+@bp.route('/registry-storage')
+@login_required
+@admin_required
+def registry_storage():
+    registry_url = (current_app.config.get('REGISTRY_URL') or '').strip()
+    configured_total = current_app.config.get('REGISTRY_STORAGE_TOTAL_GB')
+    try:
+        breakdown = storage_breakdown(registry_url, configured_total_gb=configured_total)
+    except Exception as e:
+        logger.warning('registry_storage() inventory load failed: %s', e)
+        flash(f'Could not load full registry inventory: {e}', 'warning')
+        breakdown = {
+            'trackable': [],
+            'orphaned': [],
+            'trackable_used_gb': 0,
+            'orphaned_used_gb': 0,
+            'used_gb': 0,
+            'total_gb': configured_total,
+            'free_gb': configured_total,
+        }
+    return render_template(
+        'admin/registry_storage.html',
+        registry_url=registry_url,
+        breakdown=breakdown,
+        trackable=breakdown['trackable'],
+        orphaned=breakdown['orphaned'],
+    )
+
+
+@bp.route('/registry-storage/orphans/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_registry_orphan():
+    registry_url = (current_app.config.get('REGISTRY_URL') or '').strip()
+    repo = request.form.get('repo', '').strip()
+    digest = request.form.get('digest', '').strip()
+    result = delete_orphan_by_digest(registry_url, repo, digest)
+    if result.get('ok'):
+        flash('Orphaned registry artefact deleted.', 'success')
+    else:
+        flash(f'Orphan delete failed: {result.get("error") or "unknown error"}', 'warning')
+    return _redirect_registry_storage()
 
 
 @bp.route('/users/create', methods=['POST'])

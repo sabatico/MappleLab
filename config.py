@@ -22,6 +22,7 @@ class Config:
 
     # Local Docker/OCI registry (LAN-only, no TLS needed)
     REGISTRY_URL = os.environ.get('REGISTRY_URL', 'localhost:5001')
+    REGISTRY_STORAGE_TOTAL_GB = float(os.environ.get('REGISTRY_STORAGE_TOTAL_GB', 600))
 
     # Shared secret for TART agent authentication
     AGENT_TOKEN = os.environ.get('AGENT_TOKEN', '')

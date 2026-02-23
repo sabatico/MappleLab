@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Registry Storage — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-database"></i> Registry Storage</h2>
+    <small class="text-muted">Registry: {{ registry_url or 'Not configured' }}</small>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Storage Summary</strong>
+    </div>
+    <div class="card-body">
+        {% set total = breakdown.total_gb %}
+        {% set trackable = breakdown.trackable_used_gb %}
+        {% set orphaned = breakdown.orphaned_used_gb %}
+        {% set free = breakdown.free_gb %}
+
+        {% if total is not none and total > 0 %}
+        {% set trackable_pct = ((trackable / total) * 100) if total > 0 else 0 %}
+        {% set orphaned_pct = ((orphaned / total) * 100) if total > 0 else 0 %}
+        {% set free_pct = ((free / total) * 100) if total > 0 else 0 %}
+        <div class="progress mb-3" role="progressbar" aria-label="Registry storage usage bar" style="height: 24px;">
+            <div class="progress-bar bg-success" style="width: {{ '%.2f'|format(trackable_pct) }}%">
+                Trackable
+            </div>
+            <div class="progress-bar bg-warning text-dark" style="width: {{ '%.2f'|format(orphaned_pct) }}%">
+                Untrackable
+            </div>
+            <div class="progress-bar bg-secondary" style="width: {{ '%.2f'|format(free_pct) }}%">
+                Free
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-secondary mb-3">
+            Total capacity is not available. Set <code>REGISTRY_STORAGE_TOTAL_GB</code> to enable full bar view.
+        </div>
+        {% endif %}
+
+        <div class="row g-2">
+            <div class="col-md-3"><div class="p-2 border rounded">Total: <strong>{{ '%.2f'|format(total) if total is not none else '—' }} GB</strong></div></div>
+            <div class="col-md-3"><div class="p-2 border rounded">Trackable: <strong>{{ '%.2f'|format(trackable) }} GB</strong></div></div>
+            <div class="col-md-3"><div class="p-2 border rounded">Untrackable: <strong>{{ '%.2f'|format(orphaned) }} GB</strong></div></div>
+            <div class="col-md-3"><div class="p-2 border rounded">Free: <strong>{{ '%.2f'|format(free) if free is not none else '—' }} GB</strong></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Trackable / Expected Registry Artefacts</strong>
+        <span class="badge bg-info text-dark">{{ trackable|length }} item(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>User</th>
+                    <th>VM</th>
+                    <th>SQL Status</th>
+                    <th>Registry Tag</th>
+                    <th>Digest</th>
+                    <th>Size</th>
+                    <th>Cleanup</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in trackable %}
+                <tr>
+                    <td>{{ item.user_email }}</td>
+                    <td>{{ item.vm_name }}</td>
+                    <td>
+                        {% set status = (item.vm_status or '') %}
+                        {% if status == 'running' %}
+                        <span class="badge bg-success">Running</span>
+                        {% elif status == 'stopped' %}
+                        <span class="badge bg-secondary">Stopped</span>
+                        {% elif status == 'archived' %}
+                        <span class="badge bg-warning text-dark">Archived</span>
+                        {% elif status == 'pushing' %}
+                        <span class="badge bg-info text-dark">Pushing</span>
+                        {% elif status == 'pulling' %}
+                        <span class="badge bg-info text-dark">Pulling</span>
+                        {% elif status == 'failed' %}
+                        <span class="badge bg-danger">Failed</span>
+                        {% else %}
+                        <span class="badge bg-dark">{{ status or 'unknown' }}</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ item.registry_tag }}</code></td>
+                    <td><code>{{ item.digest or '—' }}</code></td>
+                    <td>{{ '%.2f'|format(item.size_gb or 0) }} GB</td>
+                    <td>
+                        {% if item.cleanup_status %}
+                        <span class="badge {{ 'bg-success' if item.cleanup_status == 'done' else 'bg-warning text-dark' }}">
+                            {{ item.cleanup_status|capitalize }}
+                        </span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-3">No trackable artefacts found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Orphaned / Untrackable Registry Artefacts</strong>
+        <span class="badge bg-warning text-dark">{{ orphaned|length }} item(s)</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Registry Tag</th>
+                    <th>Digest</th>
+                    <th>Size</th>
+                    <th>Reason</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in orphaned %}
+                <tr>
+                    <td><code>{{ item.registry_tag }}</code></td>
+                    <td><code>{{ item.digest or '—' }}</code></td>
+                    <td>{{ '%.2f'|format(item.size_gb or 0) }} GB</td>
+                    <td class="small text-muted">{{ item.orphan_reason or 'No SQL linkage found' }}</td>
+                    <td>
+                        {% if item.digest %}
+                        <form method="POST"
+                              action="{{ url_for('admin.delete_registry_orphan') }}"
+                              style="display:inline-block;"
+                              onsubmit="return confirm('Delete orphaned registry artefact {{ item.registry_tag }} ?')">
+                            <input type="hidden" name="repo" value="{{ item.repo }}">
+                            <input type="hidden" name="digest" value="{{ item.digest }}">
+                            <button class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="text-muted small">Digest unavailable</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-3">No orphaned artefacts detected.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

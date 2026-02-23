@@ -22,6 +22,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 - Admin node management UI (add/remove Mac nodes)
 - Admin **Dashboard** (cross-user operational view) with status-aware VM actions
 - Admin **My VMs** tab preserved for personal VM view (same as non-admin users)
+- Admin **Registry Storage** tab: trackable vs orphaned registry artefacts, per-item size, and manual orphan delete
 - HTMX auto-refresh dashboard
 
 VM states shown in UI: `creating`, `running`, `stopped`, `pushing`, `archived`, `pulling`, `failed`.
@@ -468,6 +469,7 @@ SMTP can be configured in two ways:
 | `SECRET_KEY` | dev value | Flask session secret — **change in production** |
 | `DATABASE_URL` | `sqlite:///orchard_ui.db` | SQLAlchemy DB URI |
 | `REGISTRY_URL` | `localhost:5001` | Local Docker registry endpoint (`host:port` or `http://host:port/v2/`) |
+| `REGISTRY_STORAGE_TOTAL_GB` | `600` | Total registry capacity used by Admin Registry Storage bar |
 | `AGENT_TOKEN` | (empty) | Shared secret for TART agent auth — set same value on all nodes |
 | `MAIL_SERVER` | (empty) | SMTP host fallback (used when admin settings are not configured) |
 | `MAIL_PORT` | `587` | SMTP port fallback |
