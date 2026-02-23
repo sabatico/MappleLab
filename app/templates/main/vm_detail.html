@@ -158,7 +158,7 @@
                     {% endif %}
                 </div>
 
-                {% if vm.node and vm.status in ('running', 'stopped', 'failed') %}
+                {% if vm.node and (vm.status in ('running', 'stopped') or (vm.status == 'failed' and not vm.registry_tag)) %}
                 <hr>
                 <h6 class="mb-2"><i class="bi bi-arrow-left-right"></i> Migrate VM</h6>
                 {% if migrate_targets %}

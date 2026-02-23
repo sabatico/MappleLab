@@ -94,6 +94,11 @@ def _normalize_async_error(raw_error):
             'Destination node could not reach the registry server. '
             'Verify REGISTRY_URL uses manager IP/hostname (not localhost) and is reachable from that node.'
         )
+    if 'internet connection appears to be offline' in lowered:
+        return (
+            'Destination node cannot reach registry endpoint during tart pull. '
+            'Check routing/firewall/proxy on the node and ensure REGISTRY_URL points to manager IP/hostname.'
+        )
     if len(text) > 220:
         text = f'{text[:217]}...'
     return text
