@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 from app.tart_client import TartClient, TartAPIError
 
 logger = logging.getLogger(__name__)
@@ -10,11 +11,16 @@ def _normalize_registry_url(registry_url):
     Tart expects host[:port] without http(s) scheme.
     """
     value = (registry_url or '').strip().rstrip('/')
-    if value.startswith('http://'):
-        value = value[len('http://'):]
-    elif value.startswith('https://'):
-        value = value[len('https://'):]
-    return value
+    if not value:
+        return value
+
+    if value.startswith(('http://', 'https://')):
+        parsed = urlparse(value)
+        return parsed.netloc
+
+    # Handle values like "host:5001/v2/" by keeping only host:port.
+    parsed = urlparse(f'//{value}')
+    return parsed.netloc or value.split('/', 1)[0]
 
 
 class NodeManager:

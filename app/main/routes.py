@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from urllib.parse import urlparse
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app.main import bp
@@ -26,13 +27,25 @@ def _agent_vm_state(item):
 
 
 def _sanitize_registry_tag(tag):
-    """Ensure OCI registry tag does not contain URL scheme."""
+    """
+    Ensure OCI registry tag is tart-compatible.
+    Strips URL schemes and removes accidental '/v2' host path segment.
+    """
     value = (tag or '').strip()
-    if value.startswith('http://'):
-        return value[len('http://'):]
-    if value.startswith('https://'):
-        return value[len('https://'):]
-    return value
+    if not value:
+        return value
+
+    if value.startswith(('http://', 'https://')):
+        parsed = urlparse(value)
+        value = f'{parsed.netloc}{parsed.path}'
+
+    value = value.strip('/')
+    parts = [p for p in value.split('/') if p]
+    if len(parts) >= 2 and parts[1].lower() == 'v2':
+        parts.pop(1)
+    elif parts and parts[0].lower() == 'v2':
+        parts.pop(0)
+    return '/'.join(parts)
 
 
 def _reconcile_local_vms_for_user(user_id):
