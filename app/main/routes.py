@@ -426,9 +426,23 @@ def vm_detail(vm_name):
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
 
     ip_address = None
+    provisioned_disk_gb = vm.disk_size_gb
     if vm.status == 'running' and vm.node:
         try:
             ip_address = current_app.tart.get_vm_ip(vm.node, vm_name)
+        except TartAPIError:
+            pass
+    if vm.node:
+        try:
+            node_vms = current_app.tart.list_vms(vm.node)
+            node_vm = next((item for item in node_vms if _agent_vm_name(item) == vm.name), None)
+            size_gb = _agent_vm_size_on_disk_gb(node_vm)
+            if size_gb is not None:
+                provisioned_disk_gb = size_gb
+                # Keep latest disk snapshot for archived/progress calculations.
+                if vm.disk_size_gb != size_gb:
+                    vm.disk_size_gb = size_gb
+                    db.session.commit()
         except TartAPIError:
             pass
 
@@ -439,6 +453,7 @@ def vm_detail(vm_name):
     return render_template('main/vm_detail.html',
                            vm=vm,
                            ip_address=ip_address,
+                           provisioned_disk_gb=provisioned_disk_gb,
                            console_port=console_port,
                            migrate_targets=migrate_targets)
 

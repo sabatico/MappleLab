@@ -39,6 +39,10 @@
                         <td>{{ (vm.memory_mb | string + ' MB') if vm.memory_mb else '—' }}</td>
                     </tr>
                     <tr>
+                        <th>Provisioned Disk</th>
+                        <td>{{ ('%.1f' | format(provisioned_disk_gb) + ' GB') if provisioned_disk_gb is not none else '—' }}</td>
+                    </tr>
+                    <tr>
                         <th>Created</th>
                         <td><small>{{ vm.created_at.strftime('%Y-%m-%d %H:%M') if vm.created_at else '—' }}</small></td>
                     </tr>
