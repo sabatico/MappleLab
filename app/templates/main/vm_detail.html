@@ -80,7 +80,7 @@
                     {# Running: Console + Stop + Save & Shutdown #}
                     {% if vm.status == 'running' %}
                     <a href="{{ url_for('console.vnc', vm_name=vm.name) }}"
-                       class="btn btn-success">
+                       class="btn btn-outline-success">
                         <i class="bi bi-terminal"></i> Open Console
                     </a>
                     <a href="{{ url_for('console.download_vncloc', vm_name=vm.name) }}"
@@ -99,7 +99,7 @@
                     <form method="POST"
                           action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
                           onsubmit="return confirm('Save &amp; Shutdown \'{{ vm.name }}\'?\nThis pushes the disk to the registry (may take a few minutes).')">
-                        <button class="btn btn-warning">
+                        <button class="btn btn-outline-warning">
                             <i class="bi bi-cloud-upload"></i> Save &amp; Shutdown
                         </button>
                     </form>
@@ -109,7 +109,7 @@
                     {% if vm.status == 'stopped' and vm.node %}
                     <form method="POST"
                           action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
-                        <button class="btn btn-primary">
+                        <button class="btn btn-outline-primary">
                             <i class="bi bi-play-circle"></i> Start
                         </button>
                     </form>
@@ -117,7 +117,7 @@
                     {% if vm.status == 'failed' and vm.node and not vm.registry_tag %}
                     <form method="POST"
                           action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
-                        <button class="btn btn-primary">
+                        <button class="btn btn-outline-primary">
                             <i class="bi bi-play-circle"></i> Recover &amp; Start
                         </button>
                     </form>
@@ -139,7 +139,7 @@
                     <form method="POST"
                           action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
                           onsubmit="return confirm('Save VM \'{{ vm.name }}\' to registry?')">
-                        <button class="btn btn-warning">
+                        <button class="btn btn-outline-warning">
                             <i class="bi bi-cloud-upload"></i> Save
                         </button>
                     </form>
@@ -149,7 +149,7 @@
                     {% if vm.status == 'archived' %}
                     <form method="POST"
                           action="{{ url_for('main.resume_vm', vm_name=vm.name) }}">
-                        <button class="btn btn-primary">
+                        <button class="btn btn-outline-primary">
                             <i class="bi bi-play-circle"></i> Resume
                         </button>
                     </form>

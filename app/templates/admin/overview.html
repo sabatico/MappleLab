@@ -96,18 +96,18 @@
                                 <button class="btn btn-sm btn-outline-warning"><i class="bi bi-stop-circle"></i> Stop</button>
                             </form>
                             <form method="POST" action="{{ url_for('admin.archive_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
+                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
                             </form>
                             {% elif vm.status == 'stopped' %}
                             <form method="POST" action="{{ url_for('admin.start_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-primary"><i class="bi bi-play-circle"></i> Start</button>
+                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Start</button>
                             </form>
                             <form method="POST" action="{{ url_for('admin.archive_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
+                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
                             </form>
                             {% elif vm.status == 'archived' %}
                             <form method="POST" action="{{ url_for('admin.resume_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-primary"><i class="bi bi-play-circle"></i> Resume</button>
+                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Resume</button>
                             </form>
                             {% elif vm.status in ('pushing', 'pulling') %}
                             <span class="badge bg-info text-dark me-1">

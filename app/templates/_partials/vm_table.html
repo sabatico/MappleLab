@@ -28,7 +28,7 @@
         {# Running: Console + Stop + Save & Shutdown #}
         {% if vm.status == 'running' %}
         <a href="{{ url_for('console.vnc', vm_name=vm.name) }}"
-           class="btn btn-sm btn-success me-1"
+           class="btn btn-sm btn-outline-success me-1"
            title="Open VNC Console">
             <i class="bi bi-terminal"></i> Console
         </a>
@@ -52,7 +52,7 @@
               action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
               style="display: inline-block;"
               onsubmit="return confirm('Save &amp; Shutdown \'{{ vm.name }}\'?\nThis will push the VM disk to the registry (may take a few minutes).')">
-            <button type="submit" class="btn btn-sm btn-warning me-1"
+            <button type="submit" class="btn btn-sm btn-outline-warning me-1"
                     title="Save &amp; Shutdown">
                 <i class="bi bi-cloud-upload"></i> Save &amp; Shutdown
             </button>
@@ -63,7 +63,7 @@
         <form method="POST"
               action="{{ url_for('main.start_vm', vm_name=vm.name) }}"
               style="display: inline-block;">
-            <button type="submit" class="btn btn-sm btn-primary me-1"
+            <button type="submit" class="btn btn-sm btn-outline-primary me-1"
                     title="Start VM">
                 <i class="bi bi-play-circle"></i> Start
             </button>
@@ -72,7 +72,7 @@
               action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
               style="display: inline-block;"
               onsubmit="return confirm('Save VM \'{{ vm.name }}\' to registry?')">
-            <button type="submit" class="btn btn-sm btn-warning me-1"
+            <button type="submit" class="btn btn-sm btn-outline-warning me-1"
                     title="Save VM to registry">
                 <i class="bi bi-cloud-upload"></i> Save
             </button>
@@ -88,7 +88,7 @@
         <form method="POST"
               action="{{ url_for('main.resume_vm', vm_name=vm.name) }}"
               style="display: inline-block;">
-            <button type="submit" class="btn btn-sm btn-primary me-1"
+            <button type="submit" class="btn btn-sm btn-outline-primary me-1"
                     title="Resume VM from registry">
                 <i class="bi bi-play-circle"></i> Resume
             </button>
