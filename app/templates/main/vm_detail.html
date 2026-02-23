@@ -86,12 +86,20 @@
                     </form>
                     {% endif %}
 
-                    {# Stopped/Failed: Start (recovery) #}
-                    {% if vm.status in ('stopped', 'failed') and vm.node %}
+                    {# Stopped/Failed: Start (recovery). If failed+registry exists, prefer Re-Pull. #}
+                    {% if vm.status == 'stopped' and vm.node %}
                     <form method="POST"
                           action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
                         <button class="btn btn-primary">
-                            <i class="bi bi-play-circle"></i> {{ 'Recover & Start' if vm.status == 'failed' else 'Start' }}
+                            <i class="bi bi-play-circle"></i> Start
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if vm.status == 'failed' and vm.node and not vm.registry_tag %}
+                    <form method="POST"
+                          action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-play-circle"></i> Recover &amp; Start
                         </button>
                     </form>
                     {% endif %}

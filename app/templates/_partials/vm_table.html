@@ -109,6 +109,7 @@
             </button>
         </form>
         {% endif %}
+        {% if not vm.registry_tag %}
         <form method="POST"
               action="{{ url_for('main.start_vm', vm_name=vm.name) }}"
               style="display: inline-block;">
@@ -117,6 +118,7 @@
                 <i class="bi bi-play-circle"></i> Start
             </button>
         </form>
+        {% endif %}
         <a href="{{ url_for('main.vm_detail', vm_name=vm.name) }}"
            class="btn btn-sm btn-outline-primary me-1"
            title="Migrate this VM to another node">
