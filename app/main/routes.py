@@ -74,6 +74,38 @@ def _sanitize_registry_tag(tag):
     return '/'.join(parts)
 
 
+def _registry_host_from_config():
+    """
+    Extract registry host from REGISTRY_URL.
+    Accepts host:port or http(s)://host:port[/...].
+    """
+    value = (current_app.config.get('REGISTRY_URL') or '').strip()
+    if not value:
+        return None
+    if value.startswith(('http://', 'https://')):
+        parsed = urlparse(value)
+        return (parsed.hostname or '').strip() or None
+    parsed = urlparse(f'//{value}')
+    return (parsed.hostname or '').strip() or None
+
+
+def _registry_node_for_vm(vm):
+    """
+    Resolve which node hosts the Docker registry for this save/migrate operation.
+    - REGISTRY_URL localhost/127.0.0.1 => source node itself
+    - otherwise match configured host against known nodes
+    """
+    if not vm.node:
+        return None
+
+    host = (_registry_host_from_config() or '').lower()
+    if host in ('', 'localhost', '127.0.0.1'):
+        return vm.node
+
+    candidate = Node.query.filter_by(host=host).first()
+    return candidate or vm.node
+
+
 def _reconcile_local_vms_for_user(user_id):
     """
     Best-effort reconciliation of local VM DB statuses from node agent /vms.
@@ -140,14 +172,27 @@ def _check_registry_space_for_save(vm):
     if size_gb is None:
         return False, None, None, 'Could not determine VM SizeOnDisk from node.'
 
-    try:
-        health = current_app.tart.get_health(vm.node)
-    except TartAPIError as e:
-        return False, None, None, f'Could not read free disk from source node: {e}'
+    registry_node = _registry_node_for_vm(vm)
+    if not registry_node:
+        return False, None, None, 'Could not resolve registry host node for this operation.'
 
-    free_gb = _as_float((health or {}).get('disk_free_gb'))
+    try:
+        health = current_app.tart.get_health(registry_node)
+    except TartAPIError as e:
+        return False, None, None, f'Could not read registry free disk from "{registry_node.name}": {e}'
+
+    free_gb = _as_float((health or {}).get('registry_free_gb'))
+    probe = (health or {}).get('registry_probe')
+    path = (health or {}).get('registry_path')
     if free_gb is None:
-        return False, None, None, 'Source node did not report free disk information.'
+        # Fallback for older agents that don't expose registry-specific stats.
+        free_gb = _as_float((health or {}).get('disk_free_gb'))
+        probe = probe or 'legacy_disk_free_fallback'
+
+    if free_gb is None:
+        return False, None, None, (
+            f'Registry node "{registry_node.name}" did not report free disk information.'
+        )
 
     # Safety headroom for registry temp upload files and metadata.
     required_gb = round(size_gb + 2.0, 1)
@@ -156,7 +201,8 @@ def _check_registry_space_for_save(vm):
         return False, required_gb, available_gb, (
             f'Not enough free space for save/migrate. '
             f'Required {required_gb:.1f} GB (VM size {size_gb:.1f} + 2.0 GB buffer), '
-            f'available {available_gb:.1f} GB.'
+            f'available {available_gb:.1f} GB on registry storage '
+            f'("{registry_node.name}" path={path or "unknown"} source={probe or "unknown"}).'
         )
 
     return True, required_gb, available_gb, None

@@ -19,6 +19,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 VM states shown in UI: `creating`, `running`, `stopped`, `pushing`, `archived`, `pulling`, `failed`.
 Dashboard polling reconciles DB VM status with each node agent's VM list to avoid stale status labels.
 Delete operations are defensive: manager stops VNC + VM first, then deletes, to handle Tart's "running VM delete appears as not found" behavior.
+Save/migrate actions perform a fast preflight against registry-backed free space and fail early when capacity is insufficient.
 
 ## Architecture
 
