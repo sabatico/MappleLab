@@ -2,7 +2,7 @@
       data-vm-status="{{ vm.status }}"
       {% if vm.status in ('pushing', 'pulling', 'creating') or (vm.status == 'failed' and vm.node) %}
       hx-get="{{ url_for('api.vm_status', vm_name=vm.name) }}"
-      hx-trigger="every 3s"
+      hx-trigger="every 5s"
       hx-swap="outerHTML"
       hx-target="#status-area"
       {% endif %}>

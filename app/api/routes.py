@@ -136,7 +136,12 @@ def _advance_async_op(vm):
                     )
                 else:
                     registry_tag = (vm.registry_tag or '').strip()
-                    current_app.tart.restore_vm(target_node, vm.name, registry_tag)
+                    current_app.tart.restore_vm(
+                        target_node,
+                        vm.name,
+                        registry_tag,
+                        expected_disk_gb=vm.disk_size_gb,
+                    )
                     vm.status = 'pulling'
                     vm.node_id = target_node.id
                     vm.status_detail = None
@@ -157,6 +162,17 @@ def _advance_async_op(vm):
         return True
 
     return False
+
+
+def _op_stage_label(op_status):
+    labels = {
+        'stopping': 'Stopping VM',
+        'pushing': 'Saving to registry',
+        'deleting': 'Cleaning local VM',
+        'pulling': 'Downloading VM from registry',
+        'starting': 'Starting VM',
+    }
+    return labels.get((op_status or '').strip().lower(), (op_status or 'Working').title())
 
 
 @bp.route('/vms')
@@ -247,3 +263,37 @@ def vm_status(vm_name):
         return render_template('_partials/vm_status_area.html', vm=vm)
 
     return jsonify({'name': vm_name, 'status': vm.status})
+
+
+@bp.route('/vms/<vm_name>/operation')
+@login_required
+def vm_operation(vm_name):
+    """
+    Operation details for VM detail page.
+    Includes live stage and transfer metrics when agent reports them.
+    """
+    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    op = None
+    changed = False
+
+    if vm.status in ('pushing', 'pulling') and vm.node:
+        try:
+            op = current_app.tart.get_op_status(vm.node, vm.name)
+            if _advance_async_op(vm):
+                changed = True
+                if vm.status in ('pushing', 'pulling') and vm.node:
+                    op = current_app.tart.get_op_status(vm.node, vm.name)
+        except TartAPIError:
+            op = None
+    elif _sync_vm_status_from_agent(vm):
+        changed = True
+
+    if changed:
+        db.session.commit()
+
+    return render_template(
+        '_partials/vm_operation_progress.html',
+        vm=vm,
+        op=op,
+        op_stage_label=_op_stage_label,
+    )

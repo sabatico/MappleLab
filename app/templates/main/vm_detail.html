@@ -54,17 +54,8 @@
                     {% endif %}
                 </table>
 
-                {# Long-operation progress indicator #}
-                {% if vm.status in ('pushing', 'pulling') %}
-                <div class="alert alert-info py-2 mb-3">
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    {% if vm.status == 'pushing' %}
-                    Saving VM to registry&hellip; This may take several minutes.
-                    {% else %}
-                    Resuming VM from registry&hellip; This may take several minutes.
-                    {% endif %}
-                </div>
-                {% endif %}
+                {# Long-operation progress indicator (live-updated every 5s) #}
+                {% include '_partials/vm_operation_progress.html' %}
 
                 <div class="d-flex gap-1 flex-wrap mt-2 vm-detail-actions">
                     {# Running: Console + Stop + Save & Shutdown #}

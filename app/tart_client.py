@@ -71,15 +71,19 @@ class TartClient:
     def stop_vm(self, node, name):
         return self._request('POST', node, f'/vms/{name}/stop')
 
-    def save_vm(self, node, name, registry_tag):
+    def save_vm(self, node, name, registry_tag, expected_disk_gb=None):
         """Triggers async save on agent. Poll get_op_status for progress."""
-        return self._request('POST', node, f'/vms/{name}/save',
-                             json={'registry_tag': registry_tag})
+        payload = {'registry_tag': registry_tag}
+        if expected_disk_gb is not None:
+            payload['expected_disk_gb'] = expected_disk_gb
+        return self._request('POST', node, f'/vms/{name}/save', json=payload)
 
-    def restore_vm(self, node, name, registry_tag):
+    def restore_vm(self, node, name, registry_tag, expected_disk_gb=None):
         """Triggers async restore on agent. Poll get_op_status for progress."""
-        return self._request('POST', node, f'/vms/{name}/restore',
-                             json={'registry_tag': registry_tag})
+        payload = {'registry_tag': registry_tag}
+        if expected_disk_gb is not None:
+            payload['expected_disk_gb'] = expected_disk_gb
+        return self._request('POST', node, f'/vms/{name}/restore', json=payload)
 
     def get_op_status(self, node, name):
         """Poll in-progress async operation status."""

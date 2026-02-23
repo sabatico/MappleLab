@@ -1,0 +1,37 @@
+<div id="vm-operation-progress"
+     {% if vm.status in ('pushing', 'pulling') %}
+     hx-get="{{ url_for('api.vm_operation', vm_name=vm.name) }}"
+     hx-trigger="every 5s"
+     hx-swap="outerHTML"
+     {% endif %}>
+    {% if vm.status in ('pushing', 'pulling') %}
+    {% if op_stage_label is defined %}
+    {% set stage = op_stage_label(op.status if op else vm.status) %}
+    {% else %}
+    {% set stage = (vm.status | title) %}
+    {% endif %}
+    {% set transferred = op.get('transferred_gb') if op else None %}
+    {% set total = op.get('total_gb') if op else None %}
+    {% set percent = op.get('progress_pct') if op else None %}
+    <div class="alert alert-info py-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+            <strong>{{ stage }}</strong>
+        </div>
+        {% if transferred is not none and total is not none and total > 0 %}
+        <div class="small mt-1">
+            {{ '%.1f'|format(transferred) }} / {{ '%.1f'|format(total) }} GB transferred
+            {% if percent is not none %}({{ percent }}%) {% endif %}
+        </div>
+        {% elif percent is not none %}
+        <div class="small mt-1">{{ percent }}% complete</div>
+        {% else %}
+        <div class="small mt-1">Progress details are being collected from the node agent.</div>
+        {% endif %}
+    </div>
+    {% elif vm.status == 'failed' and vm.status_detail %}
+    <div class="alert alert-danger py-2 mb-3">
+        <strong>Operation failed:</strong> {{ vm.status_detail }}
+    </div>
+    {% endif %}
+</div>

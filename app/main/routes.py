@@ -475,7 +475,12 @@ def save_vm(vm_name):
         if registry_tag != vm.registry_tag:
             vm.registry_tag = registry_tag
         vm.disk_size_gb = current_vm_size_gb or vm.disk_size_gb
-        current_app.tart.save_vm(node, vm_name, registry_tag)
+        current_app.tart.save_vm(
+            node,
+            vm_name,
+            registry_tag,
+            expected_disk_gb=(current_vm_size_gb or vm.disk_size_gb),
+        )
         vm.status = 'pushing'
         db.session.commit()
         logger.info("save_vm() — %r pushing to registry", vm_name)
@@ -542,7 +547,12 @@ def migrate_vm(vm_name):
         registry_tag = _sanitize_registry_tag(vm.registry_tag)
         if registry_tag != vm.registry_tag:
             vm.registry_tag = registry_tag
-        current_app.tart.save_vm(vm.node, vm_name, registry_tag)
+        current_app.tart.save_vm(
+            vm.node,
+            vm_name,
+            registry_tag,
+            expected_disk_gb=vm.disk_size_gb,
+        )
         vm.status = 'pushing'
         # status_detail marker consumed by api.vm_status when push completes.
         vm.status_detail = f'migrate:{target_node.id}'
@@ -587,7 +597,12 @@ def resume_vm(vm_name):
         registry_tag = _sanitize_registry_tag(vm.registry_tag)
         if registry_tag != vm.registry_tag:
             vm.registry_tag = registry_tag
-        current_app.tart.restore_vm(node, vm_name, registry_tag)
+        current_app.tart.restore_vm(
+            node,
+            vm_name,
+            registry_tag,
+            expected_disk_gb=vm.disk_size_gb,
+        )
         vm.status = 'pulling'
         vm.node_id = node.id
         db.session.commit()
@@ -621,7 +636,12 @@ def repull_vm(vm_name):
         registry_tag = _sanitize_registry_tag(vm.registry_tag)
         if registry_tag != vm.registry_tag:
             vm.registry_tag = registry_tag
-        current_app.tart.restore_vm(vm.node, vm_name, registry_tag)
+        current_app.tart.restore_vm(
+            vm.node,
+            vm_name,
+            registry_tag,
+            expected_disk_gb=vm.disk_size_gb,
+        )
         vm.status = 'pulling'
         vm.status_detail = None
         db.session.commit()
