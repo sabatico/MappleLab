@@ -16,9 +16,9 @@ RESTART_CMD="${RESTART_CMD:-}"
 echo "==> Deploying Orchard UI from $REMOTE/$BRANCH"
 cd "$REPO_DIR"
 
-echo "==> Fetch + fast-forward pull"
+echo "==> Fetch + pull (merge if diverged)"
 git fetch "$REMOTE" "$BRANCH"
-git pull --ff-only "$REMOTE" "$BRANCH"
+git pull "$REMOTE" "$BRANCH"
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   echo "!! Virtualenv not found at $VENV_DIR"
