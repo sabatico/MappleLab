@@ -91,7 +91,17 @@ def _archive_vm_for_node_deactivation(node, vm, timeout_s=3600):
 @admin_required
 def index():
     """Node status dashboard."""
-    nodes_health = current_app_node_manager().get_all_nodes_health()
+    from flask import current_app
+    nodes = Node.query.order_by(Node.name.asc()).all()
+    nodes_health = []
+    for node in nodes:
+        health = None
+        if node.active:
+            try:
+                health = current_app.tart.get_health(node)
+            except TartAPIError:
+                health = None
+        nodes_health.append((node, health))
     return render_template('nodes/index.html', nodes_health=nodes_health)
 
 
@@ -188,6 +198,29 @@ def toggle_node(node_id):
         f'Node "{node.name}" deactivated. Archived {archived_count} VM(s) from this node first.',
         'success',
     )
+    return redirect(url_for('nodes.index'))
+
+
+@bp.route('/<int:node_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_node(node_id):
+    node = Node.query.get_or_404(node_id)
+    if node.active:
+        flash(f'Node "{node.name}" must be inactive before deletion.', 'warning')
+        return redirect(url_for('nodes.index'))
+
+    attached = VM.query.filter_by(node_id=node.id).count()
+    if attached > 0:
+        flash(
+            f'Node "{node.name}" cannot be deleted yet; {attached} VM record(s) still reference it.',
+            'warning',
+        )
+        return redirect(url_for('nodes.index'))
+
+    db.session.delete(node)
+    db.session.commit()
+    flash(f'Node "{node.name}" deleted.', 'success')
     return redirect(url_for('nodes.index'))
 
 

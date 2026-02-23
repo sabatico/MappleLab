@@ -80,13 +80,12 @@
                     <td class="fw-bold">{{ node.name }}</td>
                     <td><small>{{ node.host }}:{{ node.agent_port }}</small></td>
                     <td>
-                        {% if health %}
+                        {% if not node.active %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% elif health %}
                             <span class="badge bg-success">Online</span>
                         {% else %}
                             <span class="badge bg-danger">Unreachable</span>
-                        {% endif %}
-                        {% if not node.active %}
-                            <span class="badge bg-secondary ms-1">Inactive</span>
                         {% endif %}
                     </td>
                     <td>
@@ -141,6 +140,16 @@
                                 {% endif %}
                             </button>
                         </form>
+                        {% if not node.active %}
+                        <form method="POST"
+                              action="{{ url_for('nodes.delete_node', node_id=node.id) }}"
+                              style="display: inline-block;"
+                              onsubmit="return confirm('Delete inactive node \'{{ node.name }}\'?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}
