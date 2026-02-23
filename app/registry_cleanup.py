@@ -187,7 +187,34 @@ def delete_manifest(host, repo, digest, timeout=8):
         if req_error is not None:
             raise req_error
         if resp.status_code in (200, 202, 404):
+            logger.info(
+                'registry_cleanup delete_manifest host=%s repo=%s digest=%s status=%s',
+                host, repo, digest, resp.status_code,
+            )
             return {'ok': True, 'status_code': resp.status_code}
+        if resp.status_code == 405:
+            # Common Docker registry behavior when deletion is not enabled.
+            msg = (
+                'DELETE manifest failed with 405 (method not allowed). '
+                'Registry delete may be disabled; set REGISTRY_STORAGE_DELETE_ENABLED=true '
+                'for the registry and restart it.'
+            )
+            logger.warning(
+                'registry_cleanup delete_manifest 405 host=%s repo=%s digest=%s body=%s',
+                host,
+                repo,
+                digest,
+                _trim_error(getattr(resp, 'text', ''), 240),
+            )
+            return {'ok': False, 'status_code': resp.status_code, 'error': msg}
+        logger.warning(
+            'registry_cleanup delete_manifest failed host=%s repo=%s digest=%s status=%s body=%s',
+            host,
+            repo,
+            digest,
+            resp.status_code,
+            _trim_error(getattr(resp, 'text', ''), 240),
+        )
         return {
             'ok': False,
             'status_code': resp.status_code,

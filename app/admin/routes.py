@@ -177,8 +177,21 @@ def delete_registry_orphan():
     digest = request.form.get('digest', '').strip()
     result = delete_orphan_by_digest(registry_url, repo, digest)
     if result.get('ok'):
+        logger.info(
+            'admin.delete_registry_orphan ok repo=%s digest=%s status=%s',
+            repo,
+            digest,
+            result.get('status_code'),
+        )
         flash('Orphaned registry artefact deleted.', 'success')
     else:
+        logger.warning(
+            'admin.delete_registry_orphan failed repo=%s digest=%s status=%s error=%s',
+            repo,
+            digest,
+            result.get('status_code'),
+            result.get('error'),
+        )
         flash(f'Orphan delete failed: {result.get("error") or "unknown error"}', 'warning')
     return _redirect_registry_storage()
 
