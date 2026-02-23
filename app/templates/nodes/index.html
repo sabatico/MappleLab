@@ -67,7 +67,9 @@
                     <th>Host</th>
                     <th>Status</th>
                     <th>VMs</th>
-                    <th>Free Slots</th>
+                    <th>RAM</th>
+                    <th>CPU</th>
+                    <th>Network</th>
                     <th>Disk Free</th>
                     <th>Actions</th>
                 </tr>
@@ -96,7 +98,25 @@
                     </td>
                     <td>
                         {% if health %}
-                            {{ health.free_slots }}
+                            {% if health.ram_used_gb is defined and health.ram_total_gb is defined and health.ram_used_gb is not none and health.ram_total_gb is not none %}
+                                {{ '%.1f' | format(health.ram_used_gb) }} / {{ '%.1f' | format(health.ram_total_gb) }} GB
+                            {% else %}
+                                —
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if health and health.cpu_usage_pct is defined and health.cpu_usage_pct is not none %}
+                            {{ '%.1f' | format(health.cpu_usage_pct) }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if health and health.network_mbps is defined and health.network_mbps is not none %}
+                            {{ '%.1f' | format(health.network_mbps) }} Mbps/{{ health.network_type or health.network_interface or 'Net' }}
                         {% else %}
                             —
                         {% endif %}
@@ -125,7 +145,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
+                    <td colspan="9" class="text-center text-muted py-4">
                         No nodes registered.
                     </td>
                 </tr>
