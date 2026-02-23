@@ -105,6 +105,28 @@ def _normalize_async_error(raw_error):
     return text
 
 
+def _verify_vm_absent_on_node(node, vm_name, context):
+    """
+    Best-effort post-action verification for node cleanup.
+    Logs vm_exists=false/true for operational auditing.
+    """
+    if not node:
+        return
+    try:
+        node_vms = current_app.tart.list_vms(node)
+        exists = any(_agent_vm_name(item) == vm_name for item in node_vms)
+        logger.info("%s cleanup verification vm=%s node=%s vm_exists=%s",
+                    context, vm_name, node.name, str(exists).lower())
+    except TartAPIError as e:
+        logger.warning(
+            "%s cleanup verification skipped vm=%s node=%s error=%s",
+            context,
+            vm_name,
+            node.name,
+            e,
+        )
+
+
 def _advance_async_op(vm):
     """
     Progress VM async operations (pushing/pulling) from agent op status.
@@ -124,6 +146,7 @@ def _advance_async_op(vm):
 
     if op.get('status') == 'done':
         if vm.status == 'pushing':
+            source_node = vm.node
             target_node_id = _parse_migration_target(vm.status_detail)
             if target_node_id:
                 target_node = Node.query.filter_by(id=target_node_id, active=True).first()
@@ -146,11 +169,13 @@ def _advance_async_op(vm):
                     vm.status = 'pulling'
                     vm.node_id = target_node.id
                     vm.status_detail = None
+                _verify_vm_absent_on_node(source_node, vm.name, 'migration_push_done')
             else:
                 vm.status = 'archived'
                 vm.node_id = None
                 vm.last_saved_at = datetime.utcnow()
                 vm.status_detail = None
+                _verify_vm_absent_on_node(source_node, vm.name, 'archive_push_done')
         elif vm.status == 'pulling':
             vm.status = 'running'
             vm.last_started_at = datetime.utcnow()

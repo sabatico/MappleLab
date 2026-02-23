@@ -236,38 +236,48 @@ def cleanup_vm_registry_tag(vm, operation):
     Run best-effort registry cleanup for a VM and persist operational metadata.
     This must not raise into lifecycle handlers.
     """
-    vm.cleanup_last_run_at = datetime.utcnow()
-    vm.cleanup_target_digest = None
+    try:
+        vm.cleanup_last_run_at = datetime.utcnow()
+        vm.cleanup_target_digest = None
 
-    tag = (vm.registry_tag or '').strip()
-    if not tag:
-        vm.cleanup_status = 'done'
-        vm.cleanup_last_error = None
-        return {'ok': True, 'missing': True, 'digest': None, 'status_code': None, 'error': None}
+        tag = (vm.registry_tag or '').strip()
+        if not tag:
+            vm.cleanup_status = 'done'
+            vm.cleanup_last_error = None
+            return {'ok': True, 'missing': True, 'digest': None, 'status_code': None, 'error': None}
 
-    result = cleanup_tag(tag)
-    vm.cleanup_target_digest = result.get('digest')
-    if result.get('ok'):
-        vm.cleanup_status = 'done'
-        vm.cleanup_last_error = None
-        logger.info(
-            'registry_cleanup op=%s vm=%s tag=%s digest=%s status_code=%s missing=%s',
-            operation,
-            vm.name,
-            tag,
-            result.get('digest'),
-            result.get('status_code'),
-            result.get('missing', False),
-        )
-    else:
+        result = cleanup_tag(tag)
+        vm.cleanup_target_digest = result.get('digest')
+        if result.get('ok'):
+            vm.cleanup_status = 'done'
+            vm.cleanup_last_error = None
+            logger.info(
+                'registry_cleanup op=%s vm=%s tag=%s digest=%s status_code=%s missing=%s',
+                operation,
+                vm.name,
+                tag,
+                result.get('digest'),
+                result.get('status_code'),
+                result.get('missing', False),
+            )
+        else:
+            vm.cleanup_status = 'warning'
+            vm.cleanup_last_error = _trim_error(result.get('error') or 'Unknown cleanup error', 255)
+            logger.warning(
+                'registry_cleanup op=%s vm=%s tag=%s failed status_code=%s error=%s',
+                operation,
+                vm.name,
+                tag,
+                result.get('status_code'),
+                vm.cleanup_last_error,
+            )
+        return result
+    except Exception as e:
         vm.cleanup_status = 'warning'
-        vm.cleanup_last_error = _trim_error(result.get('error') or 'Unknown cleanup error', 255)
-        logger.warning(
-            'registry_cleanup op=%s vm=%s tag=%s failed status_code=%s error=%s',
+        vm.cleanup_last_error = _trim_error(f'Unexpected cleanup error: {e}', 255)
+        logger.exception(
+            'registry_cleanup op=%s vm=%s unexpected error',
             operation,
-            vm.name,
-            tag,
-            result.get('status_code'),
-            vm.cleanup_last_error,
+            getattr(vm, 'name', 'unknown'),
         )
-    return result
+        return {'ok': False, 'digest': None, 'status_code': None, 'error': vm.cleanup_last_error, 'missing': False}

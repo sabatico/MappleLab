@@ -370,6 +370,37 @@ Set `REGISTRY_URL` in your `.env` (both formats are accepted):
 
 ---
 
+## Registry Artefact Cleanup
+
+Cleanup behavior after successful lifecycle operations:
+
+- `resume` / `re-pull` / migration restore completion (`pulling -> running`):
+  - manager resolves manifest digest from `vm.registry_tag`
+  - manager deletes manifest by digest (`DELETE /v2/<repo>/manifests/<digest>`)
+- delete (user/admin):
+  - manager deletes local VM first
+  - manager then performs registry cleanup before DB row removal
+
+Operational guarantees:
+
+- cleanup is best-effort and idempotent
+- missing tag/manifest is treated as already-cleaned success
+- cleanup failures do **not** rollback successful VM lifecycle outcome
+- cleanup outcome is stored on VM metadata:
+  - `cleanup_status`
+  - `cleanup_last_error`
+  - `cleanup_last_run_at`
+  - `cleanup_target_digest`
+- admin dashboard shows cleanup warnings and supports **Retry Cleanup**
+
+Registry garbage collection note:
+
+- deleting a manifest removes the tag/manifests reference immediately
+- underlying blobs may still occupy disk until registry GC compacts them
+- disk reclamation timing depends on your registry GC policy/runtime
+
+---
+
 ## Troubleshooting
 
 ### Re-pull stuck at `waiting for lock...`
@@ -396,6 +427,23 @@ kill <pid>
 Additional note:
 
 - operation progress now exposes the latest raw Tart line in UI and overlay, so lock waits are visible immediately.
+
+### Cleanup failed (warning badge)
+
+Symptom:
+
+- VM lifecycle operation succeeded, but cleanup badge shows `Warning`.
+
+What to do:
+
+- use `Retry Cleanup` from admin dashboard row
+- verify manager can reach registry endpoint from `REGISTRY_URL`
+- check manager logs for entries starting with `registry_cleanup`
+
+Expected behavior:
+
+- VM stays in its successful state (`running`, `archived`, or deleted)
+- only cleanup metadata indicates warning/failure until retry succeeds
 
 ---
 

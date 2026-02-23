@@ -291,6 +291,28 @@ def _migration_candidates(current_node_id):
     return candidates
 
 
+def _verify_vm_absent_on_node(node, vm_name, context):
+    """
+    Best-effort post-action verification for node cleanup.
+    Logs vm_exists=false/true for operational auditing.
+    """
+    if not node:
+        return
+    try:
+        node_vms = current_app.tart.list_vms(node)
+        exists = any(_agent_vm_name(item) == vm_name for item in node_vms)
+        logger.info("%s cleanup verification vm=%s node=%s vm_exists=%s",
+                    context, vm_name, node.name, str(exists).lower())
+    except TartAPIError as e:
+        logger.warning(
+            "%s cleanup verification skipped vm=%s node=%s error=%s",
+            context,
+            vm_name,
+            node.name,
+            e,
+        )
+
+
 @bp.route('/')
 @login_required
 def dashboard():
@@ -761,6 +783,7 @@ def delete_vm(vm_name):
             pass
         try:
             current_app.tart.delete_vm(vm.node, vm_name)
+            _verify_vm_absent_on_node(vm.node, vm_name, 'delete_vm')
         except TartAPIError as e:
             logger.error("delete_vm() — agent delete failed: %s", e)
             vm.status = 'failed'

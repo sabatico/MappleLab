@@ -1,6 +1,6 @@
 # 7. Artefacts Cleanup Mechanism
 
-> **Status**: In progress (phase 1/2 implemented)  
+> **Status**: Code implementation complete; live E2E validation pending  
 > **Goal**: Ensure VM artefacts are cleaned consistently on nodes and in Docker registry after successful lifecycle operations.
 
 ---
@@ -178,14 +178,14 @@ Use this checklist as the execution plan for implementation PRs.
 - [x] Implement `cleanup_tag(registry_tag)` with structured result `{ok, digest, status_code, error}`
 - [x] Add retry/backoff policy and request timeouts
 - [x] Add idempotent handling for missing tags/manifests
-- [ ] Add unit tests for parser + digest resolution + delete responses
+- [x] Add unit tests for parser + digest resolution + delete responses
 
 ### B. Manager: Hook cleanup into VM state transitions
 
 - [x] `app/api/routes.py`: after `pulling -> running` (resume/re-pull), schedule `cleanup_tag(vm.registry_tag)`
 - [x] `app/api/routes.py`: after migration target `running`, schedule cleanup of migration transfer tag
 - [x] `app/main/routes.py`: on successful delete of archived VM, invoke cleanup before DB row removal (or mark deferred cleanup if async)
-- [ ] Ensure cleanup failure does not rollback successful VM start/migration/delete
+- [x] Ensure cleanup failure does not rollback successful VM start/migration/delete
 - [x] Add structured log entries with VM name, operation type, registry tag, digest, cleanup result
 
 ### C. Manager: Data model and visibility
@@ -206,7 +206,7 @@ Use this checklist as the execution plan for implementation PRs.
 - [ ] Verify `save` success path removes local VM on source node
 - [ ] Verify migration success path removes local VM on source node after target starts
 - [ ] Verify delete success path leaves no local VM on assigned node
-- [ ] Add explicit post-action verification logs (`vm_exists=false`) for node cleanup confirmations
+- [x] Add explicit post-action verification logs (`vm_exists=false`) for node cleanup confirmations
 
 ### F. End-to-end test checklist
 
@@ -220,9 +220,9 @@ Use this checklist as the execution plan for implementation PRs.
 
 ### G. Documentation updates
 
-- [ ] Update `README.md` with cleanup behavior and guarantees
-- [ ] Add troubleshooting section for cleanup failures and retry workflow
-- [ ] Document registry GC expectations (manifest delete vs blob compaction timing)
+- [x] Update `README.md` with cleanup behavior and guarantees
+- [x] Add troubleshooting section for cleanup failures and retry workflow
+- [x] Document registry GC expectations (manifest delete vs blob compaction timing)
 
 ---
 

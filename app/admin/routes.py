@@ -16,6 +16,7 @@ from app.main.routes import (
     _check_registry_space_for_save,
     _agent_vm_name,
     _agent_vm_size_on_disk_gb,
+    _verify_vm_absent_on_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -343,6 +344,7 @@ def delete_vm(vm_id):
             pass
         try:
             current_app.tart.delete_vm(vm.node, vm.name)
+            _verify_vm_absent_on_node(vm.node, vm.name, 'admin_delete_vm')
         except TartAPIError as e:
             vm.status = 'failed'
             vm.status_detail = f'Admin delete failed on node: {e}'
