@@ -111,6 +111,17 @@ def _find_running_deactivate_op_for_node(node_id):
     return None, None
 
 
+def _list_running_deactivate_ops():
+    with _deactivate_ops_lock:
+        ops = [
+            dict(op, op_id=op_id)
+            for op_id, op in _deactivate_ops.items()
+            if op.get('status') == 'running'
+        ]
+    ops.sort(key=lambda item: item.get('started_at') or 0)
+    return ops
+
+
 def _run_node_deactivate(app, node_id, op_id):
     with app.app_context():
         node = Node.query.get(node_id)
@@ -228,7 +239,12 @@ def index():
             except TartAPIError:
                 health = None
         nodes_health.append((node, health))
-    return render_template('nodes/index.html', nodes_health=nodes_health)
+    running_deactivate_ops = _list_running_deactivate_ops()
+    return render_template(
+        'nodes/index.html',
+        nodes_health=nodes_health,
+        running_deactivate_ops=running_deactivate_ops,
+    )
 
 
 @bp.route('/add', methods=['GET', 'POST'])
@@ -278,7 +294,14 @@ def toggle_node(node_id):
 
     # Deactivate from this legacy endpoint should now use async tracked flow.
     op_id = str(uuid.uuid4())
-    _set_deactivate_op(op_id, status='running', node_id=node.id, node_name=node.name, message='Starting deactivation...')
+    _set_deactivate_op(
+        op_id,
+        status='running',
+        node_id=node.id,
+        node_name=node.name,
+        message='Starting deactivation...',
+        started_at=time.time(),
+    )
     app_obj = current_app._get_current_object()
     threading.Thread(target=_run_node_deactivate, args=(app_obj, node.id, op_id), daemon=True).start()
     flash(
@@ -302,7 +325,14 @@ def start_deactivate(node_id):
         return jsonify({'ok': True, 'op_id': existing_id, 'node_name': node.name})
 
     op_id = str(uuid.uuid4())
-    _set_deactivate_op(op_id, status='running', node_id=node.id, node_name=node.name, message='Starting deactivation...')
+    _set_deactivate_op(
+        op_id,
+        status='running',
+        node_id=node.id,
+        node_name=node.name,
+        message='Starting deactivation...',
+        started_at=time.time(),
+    )
     app_obj = current_app._get_current_object()
     threading.Thread(target=_run_node_deactivate, args=(app_obj, node.id, op_id), daemon=True).start()
     return jsonify({'ok': True, 'op_id': op_id, 'node_name': node.name})
