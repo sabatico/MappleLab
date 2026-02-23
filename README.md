@@ -20,6 +20,7 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 - In-browser VNC console via noVNC (direct WS on LAN, SSH tunnel for WAN)
 - Live VNC profile switch (`Optimize Bandwidth` / `Optimize Render`) in console toolbar
 - Admin node management UI (add/remove Mac nodes)
+- Node deactivation drain guardrail: deactivating a node marks it inactive immediately and archives resident running/stopped VMs before users continue
 - Admin **Dashboard** (cross-user operational view) with status-aware VM actions
 - Admin **My VMs** tab preserved for personal VM view (same as non-admin users)
 - Admin **Registry Storage** tab: trackable vs orphaned registry artefacts, per-item size, and manual orphan delete
@@ -497,6 +498,27 @@ Fix:
 2. Go to **Nodes** in the navbar
 3. Click **Add Node** — fill in name, host/IP, SSH user, SSH key path, agent port (default 7000), max VMs
 4. The node will appear in the table with its current health status
+
+### Nodes table snapshots
+
+For each node, the table shows one-time snapshots at page load:
+
+- `VMs`: running / max
+- `RAM`: used / total (GB)
+- `CPU`: usage %
+- `Network`: throughput + interface type (for example `12.3 Mbps/Wifi`, `75.0 Mbps/Eth`)
+- `Disk Free`: free GB
+
+### Node deactivation behavior (guardrail)
+
+When admin presses `Deactivate` on a node:
+
+1. Node is marked inactive immediately (scheduler stops placing new workloads there).
+2. New start/migrate/re-pull actions targeting that node are blocked.
+3. Existing `running`/`stopped` VMs on that node are archived.
+4. Users later see those VMs in `archived` state (`node_id` cleared).
+
+If any VM archive fails, the node remains inactive and admin gets failure details to resolve manually.
 
 ---
 

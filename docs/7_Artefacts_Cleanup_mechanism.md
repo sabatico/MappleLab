@@ -140,6 +140,11 @@ These fields are operational metadata only.
 - If network to registry fails:
   - retry with backoff; then surface operational warning
 
+Operational guardrail implemented for node lifecycle safety:
+
+- Deactivating a node marks it inactive immediately, blocks new placements/actions on that node,
+  then archives resident `running`/`stopped` VMs so users later see consistent `archived` state.
+
 ---
 
 ## Rollout Plan
