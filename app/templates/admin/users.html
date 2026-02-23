@@ -28,7 +28,7 @@
                     <input type="number" min="1" name="max_active_vms" class="form-control" value="1">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Saved VM limit</label>
+                    <label class="form-label">Inactive VM limit</label>
                     <input type="number" min="1" name="max_saved_vms" class="form-control" value="2">
                 </div>
                 <div class="col-md-2">
@@ -69,7 +69,7 @@
                     <td>
                         <small>
                             Active: {{ user.max_active_vms }} /
-                            Saved: {{ user.max_saved_vms }} /
+                            Inactive: {{ user.max_saved_vms }} /
                             Quota: {{ user.disk_quota_gb }}GB
                         </small>
                     </td>

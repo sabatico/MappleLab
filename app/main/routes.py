@@ -178,7 +178,10 @@ def _active_vm_count_for_user(user_id):
 
 
 def _saved_vm_count_for_user(user_id):
-    return VM.query.filter_by(user_id=user_id, status='archived').count()
+    # "Inactive" includes both registry-archived VMs and stopped local VMs.
+    return VM.query.filter_by(user_id=user_id).filter(
+        VM.status.in_(('archived', 'stopped'))
+    ).count()
 
 
 def _saved_vm_disk_used_gb_for_user(user_id):
@@ -189,7 +192,7 @@ def _saved_vm_disk_used_gb_for_user(user_id):
 def _user_quota_snapshot(user):
     return {
         'active_count': _active_vm_count_for_user(user.id),
-        'saved_count': _saved_vm_count_for_user(user.id),
+        'inactive_count': _saved_vm_count_for_user(user.id),
         'saved_disk_used_gb': _saved_vm_disk_used_gb_for_user(user.id),
         'max_active_vms': user.max_active_vms or 1,
         'max_saved_vms': user.max_saved_vms or 2,
@@ -408,8 +411,13 @@ def save_vm(vm_name):
 
     node = vm.node
 
-    if _saved_vm_count_for_user(current_user.id) >= (current_user.max_saved_vms or 2):
-        flash(f'Saved VM limit ({current_user.max_saved_vms}) reached.', 'danger')
+    inactive_now = _saved_vm_count_for_user(current_user.id)
+    inactive_limit = current_user.max_saved_vms or 2
+    # Saving a stopped VM keeps it inactive (stopped -> archived), while
+    # saving a running VM increases inactive count by 1.
+    inactive_delta = 0 if vm.status == 'stopped' else 1
+    if (inactive_now + inactive_delta) > inactive_limit:
+        flash(f'Inactive VM limit ({inactive_limit}) reached.', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     size_info = None
