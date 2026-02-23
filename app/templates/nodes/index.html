@@ -3,11 +3,12 @@
 {% block title %}Nodes — Orchard UI{% endblock %}
 
 {% block content %}
+{% from '_macros/icons.html' import icon_nodes, icon_add_node, icon_deactivate, icon_activate, icon_delete %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-hdd-network"></i> Mac Nodes</h2>
+    <h2>{{ icon_nodes() }} Mac Nodes</h2>
     <button class="btn btn-primary" data-bs-toggle="collapse"
             data-bs-target="#addNodeForm">
-        <i class="bi bi-plus-circle"></i> Add Node
+        {{ icon_add_node() }} Add Node
     </button>
 </div>
 
@@ -48,7 +49,7 @@
                     </div>
                     <div class="col-12">
                         <button type="submit" class="btn btn-success">
-                            <i class="bi bi-plus-circle"></i> Add Node
+                            {{ icon_add_node() }} Add Node
                         </button>
                     </div>
                 </div>
@@ -140,9 +141,9 @@
                             <button type="submit"
                                     class="btn btn-sm {{ 'btn-outline-warning' if node.active else 'btn-outline-success' }}">
                                 {% if node.active %}
-                                <i class="bi bi-pause-circle"></i> Deactivate
+                                {{ icon_deactivate() }} Deactivate
                                 {% else %}
-                                <i class="bi bi-play-circle"></i> Activate
+                                {{ icon_activate() }} Activate
                                 {% endif %}
                             </button>
                         </form>
@@ -152,7 +153,7 @@
                               style="display: inline-block;"
                               onsubmit="return confirm('Delete inactive node \'{{ node.name }}\'?')">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i> Delete
+                                {{ icon_delete() }} Delete
                             </button>
                         </form>
                         {% endif %}

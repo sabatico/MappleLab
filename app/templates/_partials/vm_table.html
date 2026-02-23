@@ -2,6 +2,7 @@
    Used for both initial render and HTMX polling updates.
    Expects: vms — list of VM ORM model objects #}
 
+{% from '_macros/icons.html' import icon_error %}
 {% from '_macros/action_buttons.html' import
     vm_btn_console, vm_btn_download_vncloc, vm_btn_stop, vm_btn_save_shutdown,
     vm_btn_save, vm_btn_start, vm_btn_recover_start, vm_btn_resume, vm_btn_repull,
@@ -57,7 +58,7 @@
         {# Failed: show red label #}
         {% elif vm.status == 'failed' %}
         <span class="badge bg-danger me-1" title="{{ vm.status_detail | default('') }}">
-            <i class="bi bi-exclamation-triangle"></i> Error
+            {{ icon_error() }} Error
         </span>
         {% if vm.node %}
         {% if vm.registry_tag %}

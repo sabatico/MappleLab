@@ -5,7 +5,8 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-gear"></i> Settings</h5>
+        {% from '_macros/icons.html' import icon_settings, icon_send_test_email %}
+        <h5 class="mb-0">{{ icon_settings() }} Settings</h5>
     </div>
     <div class="card-body">
         <h6 class="mb-3">SMTP (Invitation Emails)</h6>
@@ -74,7 +75,7 @@
             </div>
             <div class="col-md-4">
                 <button type="submit" class="btn btn-outline-info w-100">
-                    <i class="bi bi-envelope-check"></i> Send Test Email
+                    {{ icon_send_test_email() }} Send Test Email
                 </button>
             </div>
         </form>

@@ -7,7 +7,8 @@
     <div class="col-md-5 col-lg-4">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0"><i class="bi bi-person-plus"></i> Register</h4>
+                {% from '_macros/icons.html' import icon_register, icon_create_account %}
+                <h4 class="mb-0">{{ icon_register() }} Register</h4>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('auth.register') }}">
@@ -26,7 +27,7 @@
                         <div class="form-text">Minimum 8 characters.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-person-check"></i> Create Account
+                        {{ icon_create_account() }} Create Account
                     </button>
                 </form>
                 <hr>

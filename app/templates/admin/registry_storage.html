@@ -3,8 +3,9 @@
 {% block title %}Registry Storage — Orchard UI{% endblock %}
 
 {% block content %}
+{% from '_macros/icons.html' import icon_registry_storage, icon_delete %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-database"></i> Registry Storage</h2>
+    <h2>{{ icon_registry_storage() }} Registry Storage</h2>
     <small class="text-muted">Registry: {{ registry_url or 'Not configured' }}</small>
 </div>
 
@@ -144,7 +145,7 @@
                             <input type="hidden" name="repo" value="{{ item.repo }}">
                             <input type="hidden" name="digest" value="{{ item.digest }}">
                             <button class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i> Delete
+                                {{ icon_delete() }} Delete
                             </button>
                         </form>
                         {% else %}

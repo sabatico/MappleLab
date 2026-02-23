@@ -3,10 +3,11 @@
 {% block title %}Dashboard — Orchard UI{% endblock %}
 
 {% block content %}
+{% from '_macros/icons.html' import icon_in_progress, icon_retry, icon_dashboard, icon_users %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-kanban"></i> Dashboard</h2>
+    <h2>{{ icon_dashboard() }} Dashboard</h2>
     <a class="btn btn-outline-primary" href="{{ url_for('admin.users') }}">
-        <i class="bi bi-people"></i> Manage Users
+        {{ icon_users() }} Manage Users
     </a>
 </div>
 
@@ -104,7 +105,7 @@
                             {{ vm_btn_resume(url_for('admin.resume_vm', vm_id=vm.id)) }}
                             {% elif vm.status in ('pushing', 'pulling') %}
                             <span class="badge bg-info text-dark me-1">
-                                <i class="bi bi-hourglass-split"></i> In Progress
+                                {{ icon_in_progress() }} In Progress
                             </span>
                             {% elif vm.status == 'failed' %}
                             {% if vm.node and vm.registry_tag %}
@@ -115,7 +116,7 @@
                             {% endif %}
                             {% if vm.cleanup_status in ('warning', 'failed') and vm.registry_tag %}
                             <form method="POST" action="{{ url_for('admin.cleanup_retry', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat"></i> Retry Cleanup</button>
+                                <button class="btn btn-sm btn-outline-secondary">{{ icon_retry() }} Retry Cleanup</button>
                             </form>
                             {% endif %}
                             {{ vm_btn_delete_admin(url_for('admin.delete_vm', vm_id=vm.id), vm.name) }}

@@ -28,10 +28,11 @@
     </div>
 
     <!-- Navigation -->
+    {% from '_macros/icons.html' import icon_brand, icon_vms, icon_dashboard, icon_create_vm, icon_nodes, icon_usage, icon_registry_storage, icon_user, icon_users, icon_settings, icon_logout, icon_login %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
-                <i class="bi bi-pc-display"></i> Orchard UI
+                {{ icon_brand() }} Orchard UI
             </a>
             <button class="navbar-toggler" type="button"
                     data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -41,35 +42,35 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.dashboard') }}">
-                            <i class="bi bi-grid-3x3-gap"></i> My VMs
+                            {{ icon_vms() }} My VMs
                         </a>
                     </li>
                     {% if current_user.is_authenticated and current_user.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.overview') }}">
-                            <i class="bi bi-kanban"></i> Dashboard
+                            {{ icon_dashboard() }} Dashboard
                         </a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.create_vm') }}">
-                            <i class="bi bi-plus-circle"></i> Create VM
+                            {{ icon_create_vm() }} Create VM
                         </a>
                     </li>
                     {% if current_user.is_authenticated and current_user.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('nodes.index') }}">
-                            <i class="bi bi-hdd-network"></i> Nodes
+                            {{ icon_nodes() }} Nodes
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.usage') }}">
-                            <i class="bi bi-graph-up"></i> Usage
+                            {{ icon_usage() }} Usage
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.registry_storage') }}">
-                            <i class="bi bi-database"></i> Registry Storage
+                            {{ icon_registry_storage() }} Registry Storage
                         </a>
                     </li>
                     {% endif %}
@@ -79,25 +80,25 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button"
                            data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                            {{ icon_user() }} {{ current_user.username }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             {% if current_user.is_admin %}
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('admin.users') }}">
-                                    <i class="bi bi-people"></i> Manage Users
+                                    {{ icon_users() }} Manage Users
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('admin.settings') }}">
-                                    <i class="bi bi-gear"></i> Settings
+                                    {{ icon_settings() }} Settings
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             {% endif %}
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                    {{ icon_logout() }} Logout
                                 </a>
                             </li>
                         </ul>
@@ -105,7 +106,7 @@
                     {% else %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('auth.login') }}">
-                            <i class="bi bi-box-arrow-in-right"></i> Login
+                            {{ icon_login() }} Login
                         </a>
                     </li>
                     {% endif %}

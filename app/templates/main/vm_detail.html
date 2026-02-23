@@ -3,6 +3,7 @@
 {% block title %}{{ vm.name }} — Orchard UI{% endblock %}
 
 {% block content %}
+{% from '_macros/icons.html' import icon_migrate, icon_registry %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
@@ -124,7 +125,7 @@
 
                 {% if vm.node and (vm.status in ('running', 'stopped') or (vm.status == 'failed' and not vm.registry_tag)) %}
                 <hr>
-                <h6 class="mb-2"><i class="bi bi-arrow-left-right"></i> Migrate VM</h6>
+                <h6 class="mb-2">{{ icon_migrate() }} Migrate VM</h6>
                 {% if migrate_targets %}
                 <form method="POST"
                       action="{{ url_for('main.migrate_vm', vm_name=vm.name) }}"
@@ -162,7 +163,7 @@
     <div class="col-md-6">
         <div class="card mb-3">
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-hdd-network"></i> Registry</h5>
+                <h5 class="mb-0">{{ icon_registry() }} Registry</h5>
             </div>
             <div class="card-body">
                 <p class="text-muted small mb-1">Registry tag</p>

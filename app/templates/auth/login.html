@@ -7,7 +7,8 @@
     <div class="col-md-5 col-lg-4">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0"><i class="bi bi-lock"></i> Login</h4>
+                {% from '_macros/icons.html' import icon_lock, icon_login %}
+                <h4 class="mb-0">{{ icon_lock() }} Login</h4>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('auth.login') }}">
@@ -22,7 +23,7 @@
                                required autocomplete="current-password">
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-box-arrow-in-right"></i> Login
+                        {{ icon_login() }} Login
                     </button>
                 </form>
             </div>

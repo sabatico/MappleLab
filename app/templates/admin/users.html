@@ -3,8 +3,9 @@
 {% block title %}Manage Users — Orchard UI{% endblock %}
 
 {% block content %}
+{% from '_macros/icons.html' import icon_users, icon_invite, icon_sliders, icon_email, icon_delete %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-people"></i> Manage Users</h2>
+    <h2>{{ icon_users() }} Manage Users</h2>
 </div>
 
 <div class="card mb-4">
@@ -37,7 +38,7 @@
                 </div>
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-person-plus"></i> Create + Invite
+                        {{ icon_invite() }} Create + Invite
                     </button>
                 </div>
             </div>
@@ -77,19 +78,19 @@
                     <td>
                         <a class="btn btn-sm btn-outline-primary"
                            href="{{ url_for('admin.edit_user', user_id=user.id) }}">
-                            <i class="bi bi-sliders"></i>
+                            {{ icon_sliders() }}
                         </a>
                         <form method="POST" action="{{ url_for('admin.resend_invite', user_id=user.id) }}"
                               style="display:inline-block;">
                             <button type="submit" class="btn btn-sm btn-outline-warning">
-                                <i class="bi bi-envelope"></i>
+                                {{ icon_email() }}
                             </button>
                         </form>
                         <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
                               style="display:inline-block;"
                               onsubmit="return confirm('Delete user {{ user.email or user.username }} and all their VM records?')">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
+                                {{ icon_delete() }}
                             </button>
                         </form>
                     </td>

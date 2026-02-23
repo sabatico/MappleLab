@@ -1,0 +1,153 @@
+{# Central definitions for icons (not inside buttons).
+   Use these macros so icon choice and consistency are maintained.
+   Status icons: running, stopped, archived, saving, resuming, creating, failed, etc.
+   Page/section icons: dashboard, nodes, registry, etc. #}
+
+{# --- VM status icons --- #}
+
+{% macro icon_status_running() %}
+<i class="bi bi-play-fill"></i>
+{% endmacro %}
+
+{% macro icon_status_stopped() %}
+<i class="bi bi-stop-fill"></i>
+{% endmacro %}
+
+{% macro icon_status_archived() %}
+<i class="bi bi-archive"></i>
+{% endmacro %}
+
+{% macro icon_status_saving() %}
+<i class="bi bi-cloud-upload"></i>
+{% endmacro %}
+
+{% macro icon_status_resuming() %}
+<i class="bi bi-cloud-download"></i>
+{% endmacro %}
+
+{% macro icon_status_creating() %}
+<i class="bi bi-hourglass-split"></i>
+{% endmacro %}
+
+{% macro icon_status_failed() %}
+<i class="bi bi-x-circle"></i>
+{% endmacro %}
+
+{% macro icon_in_progress() %}
+<i class="bi bi-hourglass-split"></i>
+{% endmacro %}
+
+{% macro icon_error() %}
+<i class="bi bi-exclamation-triangle"></i>
+{% endmacro %}
+
+{% macro icon_retry() %}
+<i class="bi bi-arrow-repeat"></i>
+{% endmacro %}
+
+{# --- Page / section icons --- #}
+
+{% macro icon_vms() %}
+<i class="bi bi-grid-3x3-gap"></i>
+{% endmacro %}
+
+{% macro icon_dashboard() %}
+<i class="bi bi-kanban"></i>
+{% endmacro %}
+
+{% macro icon_create_vm() %}
+<i class="bi bi-plus-circle"></i>
+{% endmacro %}
+
+{% macro icon_nodes() %}
+<i class="bi bi-hdd-network"></i>
+{% endmacro %}
+
+{% macro icon_usage() %}
+<i class="bi bi-graph-up"></i>
+{% endmacro %}
+
+{% macro icon_registry_storage() %}
+<i class="bi bi-database"></i>
+{% endmacro %}
+
+{% macro icon_registry() %}
+<i class="bi bi-hdd-network"></i>
+{% endmacro %}
+
+{% macro icon_settings() %}
+<i class="bi bi-gear"></i>
+{% endmacro %}
+
+{% macro icon_users() %}
+<i class="bi bi-people"></i>
+{% endmacro %}
+
+{% macro icon_migrate() %}
+<i class="bi bi-arrow-left-right"></i>
+{% endmacro %}
+
+{% macro icon_brand() %}
+<i class="bi bi-pc-display"></i>
+{% endmacro %}
+
+{% macro icon_logout() %}
+<i class="bi bi-box-arrow-right"></i>
+{% endmacro %}
+
+{% macro icon_login() %}
+<i class="bi bi-box-arrow-in-right"></i>
+{% endmacro %}
+
+{% macro icon_user() %}
+<i class="bi bi-person-circle"></i>
+{% endmacro %}
+
+{% macro icon_add_node() %}
+<i class="bi bi-plus-circle"></i>
+{% endmacro %}
+
+{% macro icon_deactivate() %}
+<i class="bi bi-pause-circle"></i>
+{% endmacro %}
+
+{% macro icon_activate() %}
+<i class="bi bi-play-circle"></i>
+{% endmacro %}
+
+{% macro icon_delete() %}
+<i class="bi bi-trash"></i>
+{% endmacro %}
+
+{# Auth / user forms #}
+{% macro icon_register() %}
+<i class="bi bi-person-plus"></i>
+{% endmacro %}
+
+{% macro icon_set_password() %}
+<i class="bi bi-shield-lock"></i>
+{% endmacro %}
+
+{% macro icon_lock() %}
+<i class="bi bi-lock"></i>
+{% endmacro %}
+
+{% macro icon_create_account() %}
+<i class="bi bi-person-check"></i>
+{% endmacro %}
+
+{% macro icon_invite() %}
+<i class="bi bi-person-plus"></i>
+{% endmacro %}
+
+{% macro icon_email() %}
+<i class="bi bi-envelope"></i>
+{% endmacro %}
+
+{% macro icon_send_test_email() %}
+<i class="bi bi-envelope-check"></i>
+{% endmacro %}
+
+{% macro icon_sliders() %}
+<i class="bi bi-sliders"></i>
+{% endmacro %}

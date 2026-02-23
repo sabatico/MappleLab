@@ -14,7 +14,8 @@
     <div class="col-md-8 col-lg-6">
         <div class="card">
             <div class="card-header">
-                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Create Virtual Machine</h4>
+                {% from '_macros/icons.html' import icon_create_vm %}
+                <h4 class="mb-0">{{ icon_create_vm() }} Create Virtual Machine</h4>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('main.create_vm') }}">
