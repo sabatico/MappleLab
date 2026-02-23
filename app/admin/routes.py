@@ -64,7 +64,10 @@ def _upsert_settings_from_form():
     settings.smtp_host = request.form.get('smtp_host', '').strip() or None
     settings.smtp_port = _int_field('smtp_port', 587)
     settings.smtp_user = request.form.get('smtp_user', '').strip() or None
-    settings.smtp_password = request.form.get('smtp_password', '').strip() or None
+    # Never persist SMTP passwords in the DB. Password can be provided via
+    # MAIL_PASSWORD env var or as a runtime-only override from the settings form.
+    runtime_smtp_password = request.form.get('smtp_password', '').strip()
+    settings.smtp_password = None
     settings.smtp_from = request.form.get('smtp_from', '').strip() or None
     security_mode = request.form.get('smtp_security', 'tls').strip().lower()
     if security_mode == 'ssl':
@@ -76,7 +79,7 @@ def _upsert_settings_from_form():
     else:
         settings.smtp_use_ssl = False
         settings.smtp_use_tls = True
-    return settings
+    return settings, runtime_smtp_password
 
 
 @bp.route('/users')
@@ -275,6 +278,7 @@ def stop_vm(vm_id):
         return _redirect_overview()
 
     try:
+        current_app.direct_tcp_proxy.stop_proxy(vm.name)
         current_app.tart.stop_vnc(vm.node, vm.name)
     except TartAPIError:
         pass
@@ -409,6 +413,7 @@ def delete_vm(vm_id):
     vm = VM.query.get_or_404(vm_id)
     if vm.node:
         try:
+            current_app.direct_tcp_proxy.stop_proxy(vm.name)
             current_app.tart.stop_vnc(vm.node, vm.name)
         except TartAPIError:
             pass
@@ -524,7 +529,14 @@ def delete_user(user_id):
 @admin_required
 def settings():
     if request.method == 'POST':
-        _upsert_settings_from_form()
+        _, runtime_smtp_password = _upsert_settings_from_form()
+        if runtime_smtp_password:
+            current_app.config['MAIL_PASSWORD'] = runtime_smtp_password
+            flash(
+                'SMTP password applied for current runtime only. '
+                'Set MAIL_PASSWORD in environment for persistent secure config.',
+                'warning',
+            )
         db.session.commit()
         flash('Settings saved.', 'success')
         return redirect(url_for('admin.settings'))

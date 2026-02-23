@@ -778,6 +778,7 @@ def stop_vm(vm_name):
         return _redirect_after_action(vm_name)
 
     current_app.tunnel_manager.stop_tunnel(vm_name)
+    current_app.direct_tcp_proxy.stop_proxy(vm_name)
     try:
         current_app.tart.stop_vnc(vm.node, vm_name)
     except TartAPIError:
@@ -804,6 +805,7 @@ def delete_vm(vm_name):
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
 
     current_app.tunnel_manager.stop_tunnel(vm_name)
+    current_app.direct_tcp_proxy.stop_proxy(vm_name)
 
     if vm.node:
         try:

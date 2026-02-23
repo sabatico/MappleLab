@@ -137,6 +137,7 @@ Options:
 - [x] Update `app/tart_client.py` `start_vnc()` return shape to `(ws_port, vnc_port)` with fallback `5900`.
 - [x] Add route `GET /console/<vm_name>/vncloc` in `app/console/routes.py`.
 - [x] Add UI button in `app/templates/main/vm_detail.html`.
+- [x] Stop direct proxies during disconnect/stop/delete flows (`main` + `admin` routes).
 - [ ] Ensure existing browser console flow still works unchanged.
 
 ### Phase B — Local Functional Verification
