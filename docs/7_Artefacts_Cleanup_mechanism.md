@@ -144,6 +144,7 @@ Operational guardrail implemented for node lifecycle safety:
 
 - Deactivating a node marks it inactive immediately, blocks new placements/actions on that node,
   then archives resident `running`/`stopped` VMs so users later see consistent `archived` state.
+- Node deactivation drain now reports live progress in the global overlay (multi-VM sequencing visibility).
 
 ---
 
