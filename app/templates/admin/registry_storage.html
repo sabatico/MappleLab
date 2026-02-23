@@ -14,13 +14,13 @@
     </div>
     <div class="card-body">
         {% set total = breakdown.total_gb %}
-        {% set trackable = breakdown.trackable_used_gb %}
-        {% set orphaned = breakdown.orphaned_used_gb %}
+        {% set trackable_used = breakdown.trackable_used_gb %}
+        {% set orphaned_used = breakdown.orphaned_used_gb %}
         {% set free = breakdown.free_gb %}
 
         {% if total is not none and total > 0 %}
-        {% set trackable_pct = ((trackable / total) * 100) if total > 0 else 0 %}
-        {% set orphaned_pct = ((orphaned / total) * 100) if total > 0 else 0 %}
+        {% set trackable_pct = ((trackable_used / total) * 100) if total > 0 else 0 %}
+        {% set orphaned_pct = ((orphaned_used / total) * 100) if total > 0 else 0 %}
         {% set free_pct = ((free / total) * 100) if total > 0 else 0 %}
         <div class="progress mb-3" role="progressbar" aria-label="Registry storage usage bar" style="height: 24px;">
             <div class="progress-bar bg-success" style="width: {{ '%.2f'|format(trackable_pct) }}%">
@@ -41,8 +41,8 @@
 
         <div class="row g-2">
             <div class="col-md-3"><div class="p-2 border rounded">Total: <strong>{{ '%.2f'|format(total) if total is not none else '—' }} GB</strong></div></div>
-            <div class="col-md-3"><div class="p-2 border rounded">Trackable: <strong>{{ '%.2f'|format(trackable) }} GB</strong></div></div>
-            <div class="col-md-3"><div class="p-2 border rounded">Untrackable: <strong>{{ '%.2f'|format(orphaned) }} GB</strong></div></div>
+            <div class="col-md-3"><div class="p-2 border rounded">Trackable: <strong>{{ '%.2f'|format(trackable_used) }} GB</strong></div></div>
+            <div class="col-md-3"><div class="p-2 border rounded">Untrackable: <strong>{{ '%.2f'|format(orphaned_used) }} GB</strong></div></div>
             <div class="col-md-3"><div class="p-2 border rounded">Free: <strong>{{ '%.2f'|format(free) if free is not none else '—' }} GB</strong></div></div>
         </div>
     </div>
