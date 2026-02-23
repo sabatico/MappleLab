@@ -4,7 +4,7 @@ from flask import jsonify, current_app, request, render_template
 from flask_login import login_required, current_user
 from app.api import bp
 from app.extensions import db
-from app.models import VM
+from app.models import VM, Node
 from app.tart_client import TartAPIError
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,16 @@ def _sync_vm_status_from_agent(vm, node_vms_by_name=None):
             vm.last_started_at = datetime.utcnow()
         return True
     return False
+
+
+def _parse_migration_target(status_detail):
+    value = (status_detail or '').strip()
+    if not value.startswith('migrate:'):
+        return None
+    try:
+        return int(value.split(':', 1)[1])
+    except (TypeError, ValueError):
+        return None
 
 
 @bp.route('/vms')
@@ -128,12 +138,31 @@ def vm_status(vm_name):
             op = current_app.tart.get_op_status(vm.node, vm_name)
             if op.get('status') == 'done':
                 if vm.status == 'pushing':
-                    vm.status = 'archived'
-                    vm.node_id = None
-                    vm.last_saved_at = datetime.utcnow()
+                    target_node_id = _parse_migration_target(vm.status_detail)
+                    if target_node_id:
+                        target_node = Node.query.filter_by(id=target_node_id, active=True).first()
+                        if not target_node:
+                            vm.status = 'archived'
+                            vm.node_id = None
+                            vm.last_saved_at = datetime.utcnow()
+                            vm.status_detail = (
+                                'Migration push completed but target node is unavailable. '
+                                'Use Resume to start from registry.'
+                            )
+                        else:
+                            registry_tag = (vm.registry_tag or '').strip()
+                            current_app.tart.restore_vm(target_node, vm_name, registry_tag)
+                            vm.status = 'pulling'
+                            vm.node_id = target_node.id
+                            vm.status_detail = None
+                    else:
+                        vm.status = 'archived'
+                        vm.node_id = None
+                        vm.last_saved_at = datetime.utcnow()
                 elif vm.status == 'pulling':
                     vm.status = 'running'
                     vm.last_started_at = datetime.utcnow()
+                    vm.status_detail = None
                 db.session.commit()
                 logger.info("vm_status() — %r op done → %s", vm_name, vm.status)
             elif op.get('status') == 'error':

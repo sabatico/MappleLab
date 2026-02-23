@@ -4,7 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import login_required, current_user
 from app.main import bp
 from app.extensions import db
-from app.models import VM
+from app.models import VM, Node
 from app.tart_client import TartAPIError
 
 logger = logging.getLogger(__name__)
@@ -80,6 +80,21 @@ def _reconcile_local_vms_for_user(user_id):
 def _redirect_after_action(vm_name):
     """Return to current page when possible; fall back to vm detail."""
     return redirect(request.referrer or url_for('main.vm_detail', vm_name=vm_name))
+
+
+def _migration_candidates(current_node_id):
+    """
+    Return nodes (excluding current) that are online and have free slots.
+    """
+    candidates = []
+    for node, health in current_app.node_manager.get_all_nodes_health():
+        if not health:
+            continue
+        free_slots = health.get('free_slots', 0)
+        if node.id == current_node_id or free_slots <= 0:
+            continue
+        candidates.append((node, free_slots))
+    return candidates
 
 
 @bp.route('/')
@@ -197,19 +212,23 @@ def vm_detail(vm_name):
             pass
 
     console_port = current_app.tunnel_manager.get_tunnel_port(vm_name)
+    migrate_targets = []
+    if vm.node and vm.status in ('running', 'stopped', 'failed'):
+        migrate_targets = _migration_candidates(vm.node_id)
     return render_template('main/vm_detail.html',
                            vm=vm,
                            ip_address=ip_address,
-                           console_port=console_port)
+                           console_port=console_port,
+                           migrate_targets=migrate_targets)
 
 
 @bp.route('/vms/<vm_name>/save', methods=['POST'])
 @login_required
 def save_vm(vm_name):
-    """Trigger Save & Shutdown: stops VM, pushes to registry, frees local disk."""
+    """Save VM to registry and archive it."""
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
-    if vm.status != 'running':
-        flash(f'VM is not running (status: {vm.status}).', 'warning')
+    if vm.status not in ('running', 'stopped'):
+        flash(f'VM is not savable (status: {vm.status}).', 'warning')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     node = vm.node
@@ -227,6 +246,71 @@ def save_vm(vm_name):
         flash(f'Save failed: {e}', 'danger')
 
     return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+
+@bp.route('/vms/<vm_name>/migrate', methods=['POST'])
+@login_required
+def migrate_vm(vm_name):
+    """
+    Migrate VM to another node:
+    source node save/push -> target node restore/start.
+    The restore leg starts automatically once push finishes.
+    """
+    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    if vm.status not in ('running', 'stopped', 'failed'):
+        flash(f'VM is not migratable (status: {vm.status}).', 'warning')
+        return _redirect_after_action(vm_name)
+    if not vm.node:
+        flash('VM has no assigned node to migrate from.', 'warning')
+        return _redirect_after_action(vm_name)
+
+    target_node_id = request.form.get('target_node_id', type=int)
+    if not target_node_id:
+        flash('Please select a target node for migration.', 'warning')
+        return _redirect_after_action(vm_name)
+
+    target_node = Node.query.filter_by(id=target_node_id, active=True).first()
+    if not target_node:
+        flash('Selected target node is not available.', 'danger')
+        return _redirect_after_action(vm_name)
+    if target_node.id == vm.node_id:
+        flash('Select a different node for migration.', 'warning')
+        return _redirect_after_action(vm_name)
+
+    try:
+        health = current_app.tart.get_health(target_node)
+        if health.get('free_slots', 0) <= 0:
+            flash(f'Target node "{target_node.name}" has no free VM slots.', 'danger')
+            return _redirect_after_action(vm_name)
+    except TartAPIError as e:
+        flash(f'Target node "{target_node.name}" is unreachable: {e}', 'danger')
+        return _redirect_after_action(vm_name)
+
+    try:
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        current_app.tart.save_vm(vm.node, vm_name, registry_tag)
+        vm.status = 'pushing'
+        # status_detail marker consumed by api.vm_status when push completes.
+        vm.status_detail = f'migrate:{target_node.id}'
+        db.session.commit()
+        logger.info(
+            "migrate_vm() — %r pushing on %s for restore onto %s",
+            vm_name,
+            vm.node.name,
+            target_node.name,
+        )
+        flash(
+            f'VM "{vm_name}" migration started. Saving on "{vm.node.name}" '
+            f'then restoring on "{target_node.name}".',
+            'info',
+        )
+    except TartAPIError as e:
+        logger.error("migrate_vm() — failed: %s", e)
+        flash(f'Migrate failed: {e}', 'danger')
+
+    return _redirect_after_action(vm_name)
 
 
 @bp.route('/vms/<vm_name>/resume', methods=['POST'])

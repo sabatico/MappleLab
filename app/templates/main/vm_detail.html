@@ -105,6 +105,17 @@
                     </form>
                     {% endif %}
 
+                    {# Stopped: Save to registry without shutdown step #}
+                    {% if vm.status == 'stopped' %}
+                    <form method="POST"
+                          action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
+                          onsubmit="return confirm('Save VM \'{{ vm.name }}\' to registry?')">
+                        <button class="btn btn-warning">
+                            <i class="bi bi-cloud-upload"></i> Save
+                        </button>
+                    </form>
+                    {% endif %}
+
                     {# Archived: Resume #}
                     {% if vm.status == 'archived' %}
                     <form method="POST"
@@ -136,6 +147,40 @@
                     </form>
                     {% endif %}
                 </div>
+
+                {% if vm.node and vm.status in ('running', 'stopped', 'failed') %}
+                <hr>
+                <h6 class="mb-2"><i class="bi bi-arrow-left-right"></i> Migrate VM</h6>
+                {% if migrate_targets %}
+                <form method="POST"
+                      action="{{ url_for('main.migrate_vm', vm_name=vm.name) }}"
+                      class="row g-2 align-items-center"
+                      onsubmit="return confirm('Migrate VM \'{{ vm.name }}\' to selected node?\nThis saves to registry first, then restores on target node.')">
+                    <div class="col-md-6">
+                        <select name="target_node_id" class="form-select" required>
+                            <option value="" selected disabled>Select target node</option>
+                            {% for node, free_slots in migrate_targets %}
+                            <option value="{{ node.id }}">
+                                {{ node.name }} ({{ node.host }}) — free slots: {{ free_slots }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left-right"></i> Migrate
+                        </button>
+                    </div>
+                </form>
+                <div class="form-text">
+                    Migration flow: save/push on current node, then restore/start on selected node.
+                </div>
+                {% else %}
+                <div class="alert alert-secondary py-2 mb-0">
+                    No available target nodes right now (all have zero free slots or are offline).
+                </div>
+                {% endif %}
+                {% endif %}
             </div>
         </div>
     </div>
