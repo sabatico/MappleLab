@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const overlay = document.getElementById('global-loading-overlay');
     if (!overlay) return;
+    const overlayTitle = document.getElementById('global-loading-overlay-title');
+    const overlayDetail = document.getElementById('global-loading-overlay-detail');
 
     let pendingRequests = 0;
     const trackedHtmxRequests = new WeakSet();
@@ -34,6 +36,17 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingRequests += 1;
         showOverlay();
     };
+    const setOverlayMessage = (title, detail) => {
+        if (overlayTitle) {
+            overlayTitle.textContent = title || 'Loading...';
+        }
+        if (overlayDetail) {
+            overlayDetail.textContent = detail || '';
+        }
+    };
+
+    const clearOverlayMessage = () => setOverlayMessage('Loading...', '');
+
     const endPending = () => {
         pendingRequests = Math.max(0, pendingRequests - 1);
         if (pendingRequests === 0) hideOverlay();
@@ -59,8 +72,10 @@ document.addEventListener('DOMContentLoaded', () => {
             showOverlay();
         } else if (pendingRequests === 0) {
             overlay.classList.add('d-none');
+            clearOverlayMessage();
         }
     };
+    window.setGlobalOverlayMessage = (title, detail) => setOverlayMessage(title, detail);
 
     // Show overlay for full-page form submissions.
     // Use bubbling so inline onsubmit handlers (confirm dialogs) run first.

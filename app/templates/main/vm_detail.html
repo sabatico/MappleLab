@@ -212,15 +212,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const area = document.getElementById('status-area');
         return area ? area.dataset.vmStatus : '';
     };
+    const currentOperationOverlay = () => {
+        const panel = document.getElementById('vm-operation-progress');
+        if (!panel) return { title: 'Loading...', detail: '' };
+        return {
+            title: panel.dataset.overlayTitle || 'Loading...',
+            detail: panel.dataset.overlayDetail || '',
+        };
+    };
     const applyOverlayLock = () => {
         if (typeof window.setGlobalOverlayLock !== 'function') return;
-        window.setGlobalOverlayLock(shouldLockForStatus(currentStatus()));
+        const lock = shouldLockForStatus(currentStatus());
+        window.setGlobalOverlayLock(lock);
+        if (typeof window.setGlobalOverlayMessage === 'function') {
+            if (lock) {
+                const overlay = currentOperationOverlay();
+                window.setGlobalOverlayMessage(overlay.title, overlay.detail);
+            } else {
+                window.setGlobalOverlayMessage('Loading...', '');
+            }
+        }
     };
 
     applyOverlayLock();
     document.body.addEventListener('htmx:afterSwap', (evt) => {
         const target = evt.detail && evt.detail.target;
-        if (target && target.id === 'status-area') {
+        if (target && (target.id === 'status-area' || target.id === 'vm-operation-progress')) {
             applyOverlayLock();
         }
     });
