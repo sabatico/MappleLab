@@ -22,7 +22,8 @@
         <small class="text-muted">
             Running: {{ grouped[user.id]['running']|length }} |
             Stopped: {{ grouped[user.id]['stopped']|length }} |
-            Archived: {{ grouped[user.id]['archived']|length }}
+            Archived: {{ grouped[user.id]['archived']|length }} |
+            Failed: {{ grouped[user.id]['failed']|length }}
         </small>
     </div>
     <div class="card-body p-0">
@@ -45,7 +46,12 @@
                     {% set ns.has_rows = true %}
                     <tr>
                         <td>{% include '_partials/vm_status_badge.html' %}</td>
-                        <td class="fw-semibold">{{ vm.name }}</td>
+                        <td class="fw-semibold">
+                            {{ vm.name }}
+                            {% if vm.status == 'failed' and vm.status_detail %}
+                            <div class="small text-danger mt-1">{{ vm.status_detail }}</div>
+                            {% endif %}
+                        </td>
                         <td>{{ vm.node.name if vm.node else '—' }}</td>
                         <td>{{ vm.memory_mb ~ ' MB' if vm.memory_mb else '—' }}</td>
                         <td>{{ vm.cpu if vm.cpu else '—' }}</td>
@@ -69,6 +75,16 @@
                             <form method="POST" action="{{ url_for('admin.resume_vm', vm_id=vm.id) }}" style="display:inline-block;">
                                 <button class="btn btn-sm btn-primary"><i class="bi bi-play-circle"></i> Resume</button>
                             </form>
+                            {% elif vm.status == 'failed' %}
+                            {% if vm.node and vm.registry_tag %}
+                            <form method="POST" action="{{ url_for('admin.repull_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-download"></i> Re-Pull</button>
+                            </form>
+                            {% elif vm.node and not vm.registry_tag %}
+                            <form method="POST" action="{{ url_for('admin.start_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Start</button>
+                            </form>
+                            {% endif %}
                             {% endif %}
                             <form method="POST" action="{{ url_for('admin.delete_vm', vm_id=vm.id) }}"
                                   style="display:inline-block;"

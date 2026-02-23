@@ -74,7 +74,7 @@ def overview():
     with status-aware action controls.
     """
     users = User.query.order_by(User.created_at.desc()).all()
-    status_groups = ('running', 'stopped', 'archived')
+    status_groups = ('running', 'stopped', 'archived', 'failed')
     vm_rows = (
         VM.query
         .options(selectinload(VM.node))
@@ -256,6 +256,40 @@ def resume_vm(vm_id):
         flash(f'VM "{vm.name}" resume started on "{node.name}".', 'info')
     except TartAPIError as e:
         flash(f'Resume failed for "{vm.name}": {e}', 'danger')
+    return _redirect_overview()
+
+
+@bp.route('/vms/<int:vm_id>/repull', methods=['POST'])
+@login_required
+@admin_required
+def repull_vm(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if vm.status != 'failed':
+        flash(f'VM "{vm.name}" is not in failed state (status: {vm.status}).', 'warning')
+        return _redirect_overview()
+    if not vm.node:
+        flash(f'VM "{vm.name}" has no assigned node for re-pull.', 'warning')
+        return _redirect_overview()
+    if not vm.registry_tag:
+        flash(f'VM "{vm.name}" has no registry tag; cannot re-pull.', 'danger')
+        return _redirect_overview()
+
+    try:
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        current_app.tart.restore_vm(
+            vm.node,
+            vm.name,
+            registry_tag,
+            expected_disk_gb=vm.disk_size_gb,
+        )
+        vm.status = 'pulling'
+        vm.status_detail = None
+        db.session.commit()
+        flash(f'Re-pull started for VM "{vm.name}" on "{vm.node.name}".', 'info')
+    except TartAPIError as e:
+        flash(f'Re-pull failed for "{vm.name}": {e}', 'danger')
     return _redirect_overview()
 
 
