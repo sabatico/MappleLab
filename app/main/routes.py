@@ -174,9 +174,7 @@ def _redirect_after_action(vm_name):
 
 
 def _active_vm_count_for_user(user_id):
-    return VM.query.filter_by(user_id=user_id).filter(
-        VM.status.in_(('creating', 'running', 'stopped', 'failed', 'pushing', 'pulling'))
-    ).count()
+    return VM.query.filter_by(user_id=user_id, status='running').count()
 
 
 def _saved_vm_count_for_user(user_id):
@@ -618,6 +616,9 @@ def start_vm(vm_name):
         return _redirect_after_action(vm_name)
     if not vm.node:
         flash('VM has no assigned node. Use Resume for archived VMs.', 'warning')
+        return _redirect_after_action(vm_name)
+    if _active_vm_count_for_user(current_user.id) >= (current_user.max_active_vms or 1):
+        flash(f'Active VM limit ({current_user.max_active_vms}) reached.', 'danger')
         return _redirect_after_action(vm_name)
 
     # If VM is already running/stopped on node, recover status first.
