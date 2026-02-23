@@ -64,9 +64,8 @@
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-plus-circle"></i> Create VM
-                        </button>
+                        {% from '_macros/action_buttons.html' import form_btn_create_vm %}
+                        {{ form_btn_create_vm() }}
                         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
                             Cancel
                         </a>

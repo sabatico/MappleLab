@@ -36,7 +36,8 @@
                         </div>
                     </div>
                     <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        {% from '_macros/action_buttons.html' import form_btn_save %}
+                        {{ form_btn_save() }}
                         <a class="btn btn-outline-secondary" href="{{ url_for('admin.users') }}">Back</a>
                     </div>
                 </form>

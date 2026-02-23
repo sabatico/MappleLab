@@ -91,37 +91,26 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% from '_macros/action_buttons.html' import
+                                vm_btn_stop, vm_btn_archive, vm_btn_start, vm_btn_recover_start,
+                                vm_btn_resume, vm_btn_repull, vm_btn_delete_admin %}
                             {% if vm.status == 'running' %}
-                            <form method="POST" action="{{ url_for('admin.stop_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-stop-circle"></i> Stop</button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin.archive_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
-                            </form>
+                            {{ vm_btn_stop(url_for('admin.stop_vm', vm_id=vm.id), vm.name) }}
+                            {{ vm_btn_archive(url_for('admin.archive_vm', vm_id=vm.id)) }}
                             {% elif vm.status == 'stopped' %}
-                            <form method="POST" action="{{ url_for('admin.start_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Start</button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin.archive_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
-                            </form>
+                            {{ vm_btn_start(url_for('admin.start_vm', vm_id=vm.id)) }}
+                            {{ vm_btn_archive(url_for('admin.archive_vm', vm_id=vm.id)) }}
                             {% elif vm.status == 'archived' %}
-                            <form method="POST" action="{{ url_for('admin.resume_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Resume</button>
-                            </form>
+                            {{ vm_btn_resume(url_for('admin.resume_vm', vm_id=vm.id)) }}
                             {% elif vm.status in ('pushing', 'pulling') %}
                             <span class="badge bg-info text-dark me-1">
                                 <i class="bi bi-hourglass-split"></i> In Progress
                             </span>
                             {% elif vm.status == 'failed' %}
                             {% if vm.node and vm.registry_tag %}
-                            <form method="POST" action="{{ url_for('admin.repull_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-download"></i> Re-Pull</button>
-                            </form>
+                            {{ vm_btn_repull(url_for('admin.repull_vm', vm_id=vm.id), vm.name, vm.node.name) }}
                             {% elif vm.node and not vm.registry_tag %}
-                            <form method="POST" action="{{ url_for('admin.start_vm', vm_id=vm.id) }}" style="display:inline-block;">
-                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Start</button>
-                            </form>
+                            {{ vm_btn_recover_start(url_for('admin.start_vm', vm_id=vm.id)) }}
                             {% endif %}
                             {% endif %}
                             {% if vm.cleanup_status in ('warning', 'failed') and vm.registry_tag %}
@@ -129,11 +118,7 @@
                                 <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat"></i> Retry Cleanup</button>
                             </form>
                             {% endif %}
-                            <form method="POST" action="{{ url_for('admin.delete_vm', vm_id=vm.id) }}"
-                                  style="display:inline-block;"
-                                  onsubmit="return confirm('Delete VM \'{{ vm.name }}\'?')">
-                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
-                            </form>
+                            {{ vm_btn_delete_admin(url_for('admin.delete_vm', vm_id=vm.id), vm.name) }}
                         </td>
                     </tr>
                     {% endfor %}

@@ -1,0 +1,162 @@
+{# Central definitions for VM action buttons and form submit labels.
+   Use these macros everywhere so design and text stay consistent. #}
+
+{# --- VM action button labels (single source of truth) --- #}
+{# Console: "Console" (not "Open Console") #}
+{# Save & Shutdown / Save / Archive: consistent wording #}
+{# Recover & Start: for failed VMs without registry #}
+
+{% macro vm_btn_console(url, size='sm') %}
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-success me-1" title="Open VNC Console">
+    <i class="bi bi-terminal"></i> Console
+</a>
+{% endmacro %}
+
+{% macro vm_btn_download_vncloc(url, size='sm') %}
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-success me-1" title="Download native VNC file" download data-no-loading-overlay>
+    <i class="bi bi-download"></i> Download .vncloc
+</a>
+{% endmacro %}
+
+{% macro vm_btn_stop(action, vm_name, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;" onsubmit="return confirm('Stop VM \'{{ vm_name }}\'?')">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Stop VM">
+        <i class="bi bi-stop-circle"></i> Stop
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_save_shutdown(action, vm_name, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;" onsubmit="return confirm('Save &amp; Shutdown \'{{ vm_name }}\'?\nThis will push the VM disk to the registry (may take a few minutes).')">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Save &amp; Shutdown">
+        <i class="bi bi-cloud-upload"></i> Save &amp; Shutdown
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_save(action, vm_name, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;" onsubmit="return confirm('Save VM \'{{ vm_name }}\' to registry?')">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Save VM to registry">
+        <i class="bi bi-cloud-upload"></i> Save
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_start(action, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-primary me-1" title="Start VM">
+        <i class="bi bi-play-circle"></i> Start
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_recover_start(action, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-primary me-1" title="Try to recover and start VM">
+        <i class="bi bi-play-circle"></i> Recover &amp; Start
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_resume(action, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-primary me-1" title="Resume VM from registry">
+        <i class="bi bi-play-circle"></i> Resume
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_repull(action, vm_name, node_name, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;" onsubmit="return confirm('Retry pull for VM \'{{ vm_name }}\' on {{ node_name }}?')">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Retry pull from registry onto current node">
+        <i class="bi bi-cloud-download"></i> Re-Pull
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_migrate(url, size='sm') %}
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-primary me-1" title="Migrate this VM to another node">
+    <i class="bi bi-arrow-left-right"></i> Migrate
+</a>
+{% endmacro %}
+
+{% macro vm_btn_detail(url, size='sm') %}
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-info me-1" title="View Details">
+    <i class="bi bi-info-circle"></i>
+</a>
+{% endmacro %}
+
+{% macro vm_btn_delete(action, vm_name, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;" onsubmit="return confirm('Delete VM \'{{ vm_name }}\'? This cannot be undone.')">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-danger" title="Delete VM">
+        <i class="bi bi-trash"></i> Delete
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_disconnect(action, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Disconnect active console tunnel">
+        <i class="bi bi-x-circle"></i> Disconnect Console
+    </button>
+</form>
+{% endmacro %}
+
+{% macro vm_btn_console_disabled(size='sm') %}
+<button class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-secondary me-1" disabled>
+    <i class="bi bi-terminal"></i> Console
+</button>
+{% endmacro %}
+
+{# Admin: Archive (same as Save but different label for admin context) #}
+{% macro vm_btn_archive(action, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Archive VM to registry">
+        <i class="bi bi-cloud-upload"></i> Archive
+    </button>
+</form>
+{% endmacro %}
+
+{# Admin delete with custom confirm (admin overview uses vm.name) #}
+{% macro vm_btn_delete_admin(action, vm_name, size='sm') %}
+<form method="POST" action="{{ action }}" style="display: inline-block;" onsubmit="return confirm('Delete VM \'{{ vm_name }}\'?')">
+    <button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+</form>
+{% endmacro %}
+
+{# Migrate form submit button (used inside migrate form with select) #}
+{% macro vm_btn_migrate_submit(size='') %}
+<button type="submit" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-primary">
+    <i class="bi bi-arrow-left-right"></i> Migrate
+</button>
+{% endmacro %}
+
+{# --- Form submit button labels (same action = same label) --- #}
+
+{% macro form_btn_save_settings() %}
+<button type="submit" class="btn btn-primary">
+    <i class="bi bi-save"></i> Save Settings
+</button>
+{% endmacro %}
+
+{% macro form_btn_save() %}
+<button type="submit" class="btn btn-primary">Save</button>
+{% endmacro %}
+
+{% macro form_btn_save_password() %}
+<button type="submit" class="btn btn-primary w-100">
+    <i class="bi bi-check-circle"></i> Save Password
+</button>
+{% endmacro %}
+
+{% macro form_btn_create_vm() %}
+<button type="submit" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i> Create VM
+</button>
+{% endmacro %}
+
+{% macro link_create_vm(url) %}
+<a href="{{ url }}" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i> Create VM
+</a>
+{% endmacro %}

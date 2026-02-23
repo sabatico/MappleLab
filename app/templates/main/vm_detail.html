@@ -77,103 +77,48 @@
                 {% include '_partials/vm_operation_progress.html' %}
 
                 <div class="d-flex gap-1 flex-wrap mt-2 vm-detail-actions">
+                    {% from '_macros/action_buttons.html' import
+                        vm_btn_console, vm_btn_download_vncloc, vm_btn_stop, vm_btn_save_shutdown,
+                        vm_btn_save, vm_btn_start, vm_btn_recover_start, vm_btn_resume, vm_btn_repull,
+                        vm_btn_disconnect, vm_btn_delete %}
                     {# Running: Console + Stop + Save & Shutdown #}
                     {% if vm.status == 'running' %}
-                    <a href="{{ url_for('console.vnc', vm_name=vm.name) }}"
-                       class="btn btn-outline-success">
-                        <i class="bi bi-terminal"></i> Open Console
-                    </a>
-                    <a href="{{ url_for('console.download_vncloc', vm_name=vm.name) }}"
-                       class="btn btn-outline-success"
-                       download
-                       data-no-loading-overlay>
-                        <i class="bi bi-download"></i> Download .vncloc
-                    </a>
-                    <form method="POST"
-                          action="{{ url_for('main.stop_vm', vm_name=vm.name) }}"
-                          onsubmit="return confirm('Stop VM \'{{ vm.name }}\'?')">
-                        <button class="btn btn-outline-warning">
-                            <i class="bi bi-stop-circle"></i> Stop
-                        </button>
-                    </form>
-                    <form method="POST"
-                          action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
-                          onsubmit="return confirm('Save &amp; Shutdown \'{{ vm.name }}\'?\nThis pushes the disk to the registry (may take a few minutes).')">
-                        <button class="btn btn-outline-warning">
-                            <i class="bi bi-cloud-upload"></i> Save &amp; Shutdown
-                        </button>
-                    </form>
+                    {{ vm_btn_console(url_for('console.vnc', vm_name=vm.name), size='') }}
+                    {{ vm_btn_download_vncloc(url_for('console.download_vncloc', vm_name=vm.name), size='') }}
+                    {{ vm_btn_stop(url_for('main.stop_vm', vm_name=vm.name), vm.name, size='') }}
+                    {{ vm_btn_save_shutdown(url_for('main.save_vm', vm_name=vm.name), vm.name, size='') }}
                     {% endif %}
 
-                    {# Stopped/Failed: Start (recovery). If failed+registry exists, prefer Re-Pull. #}
+                    {# Stopped: Start #}
                     {% if vm.status == 'stopped' and vm.node %}
-                    <form method="POST"
-                          action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
-                        <button class="btn btn-outline-primary">
-                            <i class="bi bi-play-circle"></i> Start
-                        </button>
-                    </form>
+                    {{ vm_btn_start(url_for('main.start_vm', vm_name=vm.name), size='') }}
                     {% endif %}
+                    {# Failed: Recover & Start or Re-Pull #}
                     {% if vm.status == 'failed' and vm.node and not vm.registry_tag %}
-                    <form method="POST"
-                          action="{{ url_for('main.start_vm', vm_name=vm.name) }}">
-                        <button class="btn btn-outline-primary">
-                            <i class="bi bi-play-circle"></i> Recover &amp; Start
-                        </button>
-                    </form>
+                    {{ vm_btn_recover_start(url_for('main.start_vm', vm_name=vm.name), size='') }}
                     {% endif %}
-
-                    {# Failed pull/restore: retry pulling from registry onto current node #}
                     {% if vm.status == 'failed' and vm.node and vm.registry_tag %}
-                    <form method="POST"
-                          action="{{ url_for('main.repull_vm', vm_name=vm.name) }}"
-                          onsubmit="return confirm('Retry pull for VM \'{{ vm.name }}\' on {{ vm.node.name }}?')">
-                        <button class="btn btn-outline-warning">
-                            <i class="bi bi-cloud-download"></i> Re-Pull
-                        </button>
-                    </form>
+                    {{ vm_btn_repull(url_for('main.repull_vm', vm_name=vm.name), vm.name, vm.node.name, size='') }}
                     {% endif %}
 
-                    {# Stopped: Save to registry without shutdown step #}
+                    {# Stopped: Save to registry #}
                     {% if vm.status == 'stopped' %}
-                    <form method="POST"
-                          action="{{ url_for('main.save_vm', vm_name=vm.name) }}"
-                          onsubmit="return confirm('Save VM \'{{ vm.name }}\' to registry?')">
-                        <button class="btn btn-outline-warning">
-                            <i class="bi bi-cloud-upload"></i> Save
-                        </button>
-                    </form>
+                    {{ vm_btn_save(url_for('main.save_vm', vm_name=vm.name), vm.name, size='') }}
                     {% endif %}
 
                     {# Archived: Resume #}
                     {% if vm.status == 'archived' %}
-                    <form method="POST"
-                          action="{{ url_for('main.resume_vm', vm_name=vm.name) }}">
-                        <button class="btn btn-outline-primary">
-                            <i class="bi bi-play-circle"></i> Resume
-                        </button>
-                    </form>
+                    {{ vm_btn_resume(url_for('main.resume_vm', vm_name=vm.name), size='') }}
                     {% endif %}
 
                     {# Disconnect console if active tunnel #}
                     {% if console_port %}
-                    <form method="POST"
-                          action="{{ url_for('console.disconnect', vm_name=vm.name) }}">
-                        <button class="btn btn-outline-warning">
-                            <i class="bi bi-x-circle"></i> Disconnect Console
-                        </button>
-                    </form>
+                    {{ vm_btn_disconnect(url_for('console.disconnect', vm_name=vm.name), size='') }}
                     {% endif %}
 
                     {# Delete (only when not in transient state) #}
                     {% if vm.status not in ('pushing', 'pulling', 'creating') %}
-                    <form method="POST"
-                          action="{{ url_for('main.delete_vm', vm_name=vm.name) }}"
-                          onsubmit="return confirm('Delete VM \'{{ vm.name }}\'?')">
-                        <button class="btn btn-outline-danger">
-                            <i class="bi bi-trash"></i> Delete
-                        </button>
-                    </form>
+                    {{ vm_btn_delete(url_for('main.delete_vm', vm_name=vm.name), vm.name, size='') }}
                     {% endif %}
                 </div>
 
@@ -196,9 +141,8 @@
                         </select>
                     </div>
                     <div class="col-md-auto">
-                        <button type="submit" class="btn btn-outline-primary">
-                            <i class="bi bi-arrow-left-right"></i> Migrate
-                        </button>
+                        {% from '_macros/action_buttons.html' import vm_btn_migrate_submit %}
+                        {{ vm_btn_migrate_submit(size='') }}
                     </div>
                 </form>
                 <div class="form-text">

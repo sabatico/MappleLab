@@ -5,9 +5,8 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2><i class="bi bi-grid-3x3-gap"></i> Virtual Machines</h2>
-    <a href="{{ url_for('main.create_vm') }}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Create VM
-    </a>
+    {% from '_macros/action_buttons.html' import link_create_vm %}
+    {{ link_create_vm(url_for('main.create_vm')) }}
 </div>
 
 <div class="mb-3">
