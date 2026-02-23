@@ -1,13 +1,90 @@
 import logging
+import time
+from datetime import datetime
 from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required
 from app.nodes import bp
 from app.extensions import db
-from app.models import Node
+from app.models import Node, VM
 from app.tart_client import TartAPIError
 from app.utils import admin_required
 
 logger = logging.getLogger(__name__)
+
+
+def _archive_vm_for_node_deactivation(node, vm, timeout_s=3600):
+    """
+    Archive one VM during node deactivation and wait until async save completes.
+    """
+    from flask import current_app
+    from app.main.routes import (
+        _sanitize_registry_tag,
+        _check_registry_space_for_save,
+        _agent_vm_name,
+        _agent_vm_size_on_disk_gb,
+    )
+
+    ok, _, _, reason = _check_registry_space_for_save(vm)
+    if not ok:
+        raise RuntimeError(reason or 'Registry preflight failed.')
+
+    if not vm.registry_tag:
+        vm.registry_tag = current_app.node_manager.registry_tag_for(
+            vm.owner.username,
+            vm.name,
+            current_app.config.get('REGISTRY_URL'),
+        )
+
+    # Refresh disk size snapshot before save, when available.
+    try:
+        node_vms = current_app.tart.list_vms(node)
+        size_info = next((item for item in node_vms if _agent_vm_name(item) == vm.name), None)
+        vm.disk_size_gb = _agent_vm_size_on_disk_gb(size_info) or vm.disk_size_gb
+    except TartAPIError:
+        pass
+
+    registry_tag = _sanitize_registry_tag(vm.registry_tag)
+    if registry_tag != vm.registry_tag:
+        vm.registry_tag = registry_tag
+
+    current_app.tart.save_vm(
+        node,
+        vm.name,
+        registry_tag,
+        expected_disk_gb=vm.disk_size_gb,
+    )
+    vm.status = 'pushing'
+    vm.status_detail = None
+    db.session.commit()
+
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        op = current_app.tart.get_op_status(node, vm.name)
+        state = (op.get('status') or '').strip().lower()
+        if state == 'done':
+            vm.status = 'archived'
+            vm.node_id = None
+            vm.last_saved_at = datetime.utcnow()
+            vm.status_detail = None
+            db.session.commit()
+            return
+        if state == 'error':
+            error = (op.get('error') or 'Unknown save error').strip()
+            vm.status = 'failed'
+            vm.status_detail = error[:255]
+            db.session.commit()
+            raise RuntimeError(error)
+        if state == 'idle':
+            vm.status = 'failed'
+            vm.status_detail = 'Save operation state was lost on node agent (idle).'
+            db.session.commit()
+            raise RuntimeError(vm.status_detail)
+        time.sleep(3)
+
+    vm.status = 'failed'
+    vm.status_detail = 'Timed out while archiving during node deactivation.'
+    db.session.commit()
+    raise RuntimeError(vm.status_detail)
 
 @bp.route('/')
 @login_required
@@ -54,10 +131,59 @@ def add_node():
 @admin_required
 def toggle_node(node_id):
     node = Node.query.get_or_404(node_id)
-    node.active = not node.active
+
+    # Activate path stays immediate.
+    if not node.active:
+        node.active = True
+        db.session.commit()
+        flash(f'Node "{node.name}" activated.', 'success')
+        return redirect(url_for('nodes.index'))
+
+    # Deactivate path: first archive local running/stopped VMs on this node.
+    blocked = VM.query.filter_by(node_id=node.id).filter(
+        VM.status.in_(('creating', 'pushing', 'pulling'))
+    ).all()
+    if blocked:
+        names = ', '.join(vm.name for vm in blocked[:5])
+        suffix = '...' if len(blocked) > 5 else ''
+        flash(
+            f'Cannot deactivate "{node.name}" while operations are in progress '
+            f'(creating/pushing/pulling): {names}{suffix}',
+            'warning',
+        )
+        return redirect(url_for('nodes.index'))
+
+    to_archive = VM.query.filter_by(node_id=node.id).filter(
+        VM.status.in_(('running', 'stopped'))
+    ).all()
+
+    archived_count = 0
+    errors = []
+    for vm in to_archive:
+        try:
+            _archive_vm_for_node_deactivation(node, vm)
+            archived_count += 1
+        except (RuntimeError, TartAPIError) as e:
+            logger.error(
+                'toggle_node() — deactivation archive failed node=%s vm=%s error=%s',
+                node.name, vm.name, e,
+            )
+            errors.append(f'{vm.name}: {e}')
+
+    if errors:
+        flash(
+            f'Node "{node.name}" NOT deactivated. Failed to archive {len(errors)} VM(s). '
+            f'First error: {errors[0]}',
+            'danger',
+        )
+        return redirect(url_for('nodes.index'))
+
+    node.active = False
     db.session.commit()
-    state = 'activated' if node.active else 'deactivated'
-    flash(f'Node "{node.name}" {state}.', 'success')
+    flash(
+        f'Node "{node.name}" deactivated. Archived {archived_count} VM(s) from this node first.',
+        'success',
+    )
     return redirect(url_for('nodes.index'))
 
 
