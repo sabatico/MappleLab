@@ -207,6 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const opId = started.op_id;
                 let done = false;
+                let finalState = '';
+                let finalMessage = '';
                 while (!done) {
                     const statusUrl = statusTemplate.replace('__OP__', opId);
                     const statusResp = await fetch(statusUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
@@ -225,14 +227,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const opState = (status.status || '').toLowerCase();
                     if (opState === 'done' || opState === 'error' || opState === 'blocked') {
+                        finalState = opState;
+                        finalMessage = msg || 'Operation finished.';
                         done = true;
                         break;
                     }
                     await sleep(2000);
                 }
 
-                // reload to show latest statuses + flash messages from route flows
-                window.location.reload();
+                if (finalState === 'done') {
+                    // Reload only on full completion so UI reflects archived state.
+                    window.location.reload();
+                    return;
+                }
+
+                // For blocked/error, keep the message visible until acknowledged.
+                const suffix = finalState === 'blocked'
+                    ? 'Background VM operations may still be running. Retry deactivation after they finish.'
+                    : 'Check logs and retry after resolving the error.';
+                setOverlay(`Deactivation ${finalState || 'stopped'}`, `${finalMessage} ${suffix}`);
+                alert(`${finalMessage}\n\n${suffix}`);
+                if (window.setGlobalOverlayLock) window.setGlobalOverlayLock(false);
             } catch (err) {
                 const message = (err && err.message) ? err.message : 'Node deactivation failed.';
                 setOverlay(`Deactivating ${nodeName}`, message);
