@@ -184,6 +184,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.setGlobalOverlayMessage) window.setGlobalOverlayMessage(title, detail);
     };
 
+    const toFiniteNumber = (value) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+    };
+
+    const formatVmProgressDetail = (status) => {
+        const transferred = toFiniteNumber(status.vm_transferred_gb);
+        const total = toFiniteNumber(status.vm_total_gb);
+        const percent = toFiniteNumber(status.vm_progress_pct);
+        const line = (status.vm_progress_line || '').trim();
+
+        if (transferred !== null && total !== null && total > 0) {
+            const pctText = percent !== null ? ` (${Math.max(0, Math.min(100, Math.round(percent)))}%)` : '';
+            return `${transferred.toFixed(1)} / ${total.toFixed(1)} GB${pctText}`;
+        }
+        if (percent !== null) {
+            return `${Math.max(0, Math.min(100, Math.round(percent)))}% complete`;
+        }
+        if (line) return line;
+        return '';
+    };
+
     const trackDeactivation = async ({ nodeName, nodeId, opId }) => {
         if (!nodeId || !opId) return;
         if (window.setGlobalOverlayLock) window.setGlobalOverlayLock(true);
@@ -204,7 +226,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentVm = status.current_vm || '';
             const msg = status.message || '';
             const progress = total > 0 ? `${completed}/${total}` : `${completed}/0`;
-            const detail = currentVm ? `${msg} (${progress}) — ${currentVm}` : `${msg} (${progress})`;
+            const vmProgress = formatVmProgressDetail(status);
+            let detail = `${msg} (${progress})`;
+            if (currentVm) {
+                detail = vmProgress
+                    ? `${detail} — ${currentVm}: ${vmProgress}`
+                    : `${detail} — ${currentVm}`;
+            } else if (vmProgress) {
+                detail = `${detail} — ${vmProgress}`;
+            }
             setOverlay(`Deactivating ${nodeName || status.node_name || 'node'}`, detail);
 
             const opState = (status.status || '').toLowerCase();

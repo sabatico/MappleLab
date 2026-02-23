@@ -16,7 +16,14 @@ _deactivate_ops = {}
 _deactivate_ops_lock = threading.Lock()
 
 
-def _archive_vm_for_node_deactivation(node, vm, timeout_s=3600):
+def _as_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _archive_vm_for_node_deactivation(node, vm, timeout_s=3600, progress_cb=None):
     """
     Archive one VM during node deactivation and wait until async save completes.
     """
@@ -64,6 +71,8 @@ def _archive_vm_for_node_deactivation(node, vm, timeout_s=3600):
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         op = current_app.tart.get_op_status(node, vm.name)
+        if callable(progress_cb):
+            progress_cb(op)
         state = (op.get('status') or '').strip().lower()
         if state == 'done':
             vm.status = 'archived'
@@ -139,6 +148,10 @@ def _run_node_deactivate(app, node_id, op_id):
             current_vm=None,
             message='Marking node inactive...',
             errors=[],
+            vm_progress_pct=None,
+            vm_transferred_gb=None,
+            vm_total_gb=None,
+            vm_progress_line=None,
         )
 
         # Mark inactive immediately to block new placements/actions.
@@ -179,14 +192,43 @@ def _run_node_deactivate(app, node_id, op_id):
                 op_id,
                 current_vm=vm.name,
                 message=f'Archiving VM {idx}/{total}: {vm.name}',
+                vm_progress_pct=None,
+                vm_transferred_gb=None,
+                vm_total_gb=_as_float(vm.disk_size_gb),
+                vm_progress_line=None,
             )
             try:
-                _archive_vm_for_node_deactivation(node, vm)
+                def _on_progress(op):
+                    progress_pct = op.get('progress_pct')
+                    if progress_pct is not None:
+                        try:
+                            progress_pct = int(progress_pct)
+                        except (TypeError, ValueError):
+                            progress_pct = None
+
+                    transferred_gb = _as_float(op.get('transferred_gb'))
+                    total_gb = _as_float(op.get('total_gb'))
+                    if total_gb is None:
+                        total_gb = _as_float(vm.disk_size_gb)
+
+                    _set_deactivate_op(
+                        op_id,
+                        vm_progress_pct=progress_pct,
+                        vm_transferred_gb=transferred_gb,
+                        vm_total_gb=total_gb,
+                        vm_progress_line=(op.get('last_progress_line') or '').strip() or None,
+                    )
+
+                _archive_vm_for_node_deactivation(node, vm, progress_cb=_on_progress)
                 archived_count += 1
                 _set_deactivate_op(
                     op_id,
                     completed=archived_count,
                     message=f'Archived VM {idx}/{total}: {vm.name}',
+                    vm_progress_pct=100,
+                    vm_transferred_gb=_as_float(vm.disk_size_gb),
+                    vm_total_gb=_as_float(vm.disk_size_gb),
+                    vm_progress_line=None,
                 )
             except (RuntimeError, TartAPIError) as e:
                 logger.error(
@@ -199,6 +241,7 @@ def _run_node_deactivate(app, node_id, op_id):
                     completed=archived_count,
                     message=f'Failed archiving VM {idx}/{total}: {vm.name}',
                     errors=list(errors),
+                    vm_progress_line=str(e),
                 )
 
         if errors:
@@ -211,6 +254,10 @@ def _run_node_deactivate(app, node_id, op_id):
                     f'First error: {errors[0]}'
                 ),
                 errors=list(errors),
+                vm_progress_pct=None,
+                vm_transferred_gb=None,
+                vm_total_gb=None,
+                vm_progress_line=None,
             )
             return
 
@@ -221,6 +268,10 @@ def _run_node_deactivate(app, node_id, op_id):
             completed=archived_count,
             message=f'Node deactivated. Archived {archived_count} VM(s).',
             errors=[],
+            vm_progress_pct=None,
+            vm_transferred_gb=None,
+            vm_total_gb=None,
+            vm_progress_line=None,
         )
 
 @bp.route('/')
