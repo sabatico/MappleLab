@@ -9,6 +9,7 @@ from app.extensions import db
 from app.models import VM, Node
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
+from app.usage_events import ensure_vm_status_baseline, set_vm_status
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +180,7 @@ def _reconcile_local_vms_for_user(user_id):
             continue
         node_state = (_agent_vm_state(node_vm) or '').strip().lower()
         if node_state in ('running', 'stopped') and vm.status != node_state:
-            vm.status = node_state
+            set_vm_status(vm, node_state, source='api_poller', context='dashboard_reconcile')
             vm.status_detail = None
             if node_state == 'running':
                 vm.last_started_at = datetime.utcnow()
@@ -386,18 +387,20 @@ def create_vm():
     )
     db.session.add(vm)
     db.session.commit()
+    ensure_vm_status_baseline(vm, source='ui', context='create_vm')
+    db.session.commit()
 
     try:
         current_app.tart.create_vm(node, name, image, cpu, memory)
         current_app.tart.start_vm(node, name)
         # Confirm effective state from node to avoid stale optimistic status.
-        vm.status = 'running'
+        set_vm_status(vm, 'running', source='ui', context='create_vm_started')
         try:
             node_vms = current_app.tart.list_vms(node)
             node_vm = next((item for item in node_vms if _agent_vm_name(item) == name), None)
             node_status = (_agent_vm_state(node_vm) or '').strip().lower()
             if node_status in ('running', 'stopped'):
-                vm.status = node_status
+                set_vm_status(vm, node_status, source='api_poller', context='create_vm_reconcile')
         except TartAPIError as e:
             logger.warning("create_vm() — status reconcile skipped: %s", e)
 
@@ -411,7 +414,7 @@ def create_vm():
             flash(f'VM "{name}" created, but is currently {vm.status}.', 'warning')
     except TartAPIError as e:
         logger.error("create_vm() — failed: %s", e)
-        vm.status = 'failed'
+        set_vm_status(vm, 'failed', source='ui', context='create_vm_failed')
         vm.status_detail = str(e)
         db.session.commit()
         flash(f'Failed to create VM: {e}', 'danger')
@@ -519,7 +522,7 @@ def save_vm(vm_name):
             registry_tag,
             expected_disk_gb=(current_vm_size_gb or vm.disk_size_gb),
         )
-        vm.status = 'pushing'
+        set_vm_status(vm, 'pushing', source='ui', context='save_vm')
         db.session.commit()
         logger.info("save_vm() — %r pushing to registry", vm_name)
         flash(f'VM "{vm_name}" is saving. This may take a few minutes.', 'info')
@@ -597,7 +600,7 @@ def migrate_vm(vm_name):
             registry_tag,
             expected_disk_gb=vm.disk_size_gb,
         )
-        vm.status = 'pushing'
+        set_vm_status(vm, 'pushing', source='ui', context='migrate_vm')
         # status_detail marker consumed by api.vm_status when push completes.
         vm.status_detail = f'migrate:{target_node.id}'
         db.session.commit()
@@ -647,7 +650,7 @@ def resume_vm(vm_name):
             registry_tag,
             expected_disk_gb=vm.disk_size_gb,
         )
-        vm.status = 'pulling'
+        set_vm_status(vm, 'pulling', source='ui', context='resume_vm')
         vm.node_id = node.id
         db.session.commit()
         logger.info("resume_vm() — %r pulling from registry onto node %s", vm_name, node.name)
@@ -692,7 +695,7 @@ def repull_vm(vm_name):
             registry_tag,
             expected_disk_gb=vm.disk_size_gb,
         )
-        vm.status = 'pulling'
+        set_vm_status(vm, 'pulling', source='ui', context='repull_vm')
         vm.status_detail = None
         db.session.commit()
         logger.info("repull_vm() — %r pulling from registry onto node %s", vm_name, vm.node.name)
@@ -731,7 +734,7 @@ def start_vm(vm_name):
         node_vm = next((item for item in node_vms if _agent_vm_name(item) == vm_name), None)
         node_state = (_agent_vm_state(node_vm) or '').strip().lower()
         if node_state == 'running':
-            vm.status = 'running'
+            set_vm_status(vm, 'running', source='api_poller', context='start_vm_reconcile')
             vm.status_detail = None
             vm.last_started_at = datetime.utcnow()
             db.session.commit()
@@ -742,7 +745,7 @@ def start_vm(vm_name):
 
     try:
         current_app.tart.start_vm(vm.node, vm_name)
-        vm.status = 'running'
+        set_vm_status(vm, 'running', source='ui', context='start_vm')
         vm.last_started_at = datetime.utcnow()
         vm.status_detail = None
         db.session.commit()
@@ -786,7 +789,7 @@ def stop_vm(vm_name):
 
     try:
         current_app.tart.stop_vm(vm.node, vm_name)
-        vm.status = 'stopped'
+        set_vm_status(vm, 'stopped', source='ui', context='stop_vm')
         vm.status_detail = None
         db.session.commit()
         logger.info("stop_vm() — %r stopped", vm_name)
@@ -821,7 +824,7 @@ def delete_vm(vm_name):
             _verify_vm_absent_on_node(vm.node, vm_name, 'delete_vm')
         except TartAPIError as e:
             logger.error("delete_vm() — agent delete failed: %s", e)
-            vm.status = 'failed'
+            set_vm_status(vm, 'failed', source='ui', context='delete_vm_failed')
             vm.status_detail = f'Delete failed on node: {e}'
             db.session.commit()
             flash(

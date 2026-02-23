@@ -12,6 +12,7 @@ from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 from app.utils import admin_required
 from app.email import send_invite_email, send_test_email
+from app.usage_events import ensure_vm_status_baseline, set_vm_status
 from app.main.routes import (
     _sanitize_registry_tag,
     _check_registry_space_for_save,
@@ -240,6 +241,7 @@ def create_user():
 @admin_required
 def start_vm(vm_id):
     vm = VM.query.get_or_404(vm_id)
+    ensure_vm_status_baseline(vm, source='system', context='admin_start_baseline')
     if vm.status not in ('stopped', 'failed'):
         flash(f'VM "{vm.name}" is not startable (status: {vm.status}).', 'warning')
         return _redirect_overview()
@@ -255,7 +257,7 @@ def start_vm(vm_id):
 
     try:
         current_app.tart.start_vm(vm.node, vm.name)
-        vm.status = 'running'
+        set_vm_status(vm, 'running', source='ui', context='admin_start_vm')
         vm.last_started_at = datetime.utcnow()
         vm.status_detail = None
         db.session.commit()
@@ -270,6 +272,7 @@ def start_vm(vm_id):
 @admin_required
 def stop_vm(vm_id):
     vm = VM.query.get_or_404(vm_id)
+    ensure_vm_status_baseline(vm, source='system', context='admin_stop_baseline')
     if vm.status != 'running':
         flash(f'VM "{vm.name}" is not running (status: {vm.status}).', 'warning')
         return _redirect_overview()
@@ -285,7 +288,7 @@ def stop_vm(vm_id):
 
     try:
         current_app.tart.stop_vm(vm.node, vm.name)
-        vm.status = 'stopped'
+        set_vm_status(vm, 'stopped', source='ui', context='admin_stop_vm')
         vm.status_detail = None
         db.session.commit()
         flash(f'VM "{vm.name}" stopped.', 'success')
@@ -299,6 +302,7 @@ def stop_vm(vm_id):
 @admin_required
 def archive_vm(vm_id):
     vm = VM.query.get_or_404(vm_id)
+    ensure_vm_status_baseline(vm, source='system', context='admin_archive_baseline')
     if vm.status not in ('running', 'stopped'):
         flash(f'VM "{vm.name}" is not archivable (status: {vm.status}).', 'warning')
         return _redirect_overview()
@@ -328,7 +332,7 @@ def archive_vm(vm_id):
             vm.registry_tag = registry_tag
         vm.disk_size_gb = _agent_vm_size_on_disk_gb(size_info) or vm.disk_size_gb
         current_app.tart.save_vm(vm.node, vm.name, registry_tag)
-        vm.status = 'pushing'
+        set_vm_status(vm, 'pushing', source='ui', context='admin_archive_vm')
         vm.status_detail = None
         db.session.commit()
         flash(f'VM "{vm.name}" archiving started (push in progress).', 'info')
@@ -342,6 +346,7 @@ def archive_vm(vm_id):
 @admin_required
 def resume_vm(vm_id):
     vm = VM.query.get_or_404(vm_id)
+    ensure_vm_status_baseline(vm, source='system', context='admin_resume_baseline')
     if vm.status != 'archived':
         flash(f'VM "{vm.name}" is not archived (status: {vm.status}).', 'warning')
         return _redirect_overview()
@@ -356,7 +361,7 @@ def resume_vm(vm_id):
         if registry_tag != vm.registry_tag:
             vm.registry_tag = registry_tag
         current_app.tart.restore_vm(node, vm.name, registry_tag)
-        vm.status = 'pulling'
+        set_vm_status(vm, 'pulling', source='ui', context='admin_resume_vm')
         vm.node_id = node.id
         vm.status_detail = None
         db.session.commit()
@@ -371,6 +376,7 @@ def resume_vm(vm_id):
 @admin_required
 def repull_vm(vm_id):
     vm = VM.query.get_or_404(vm_id)
+    ensure_vm_status_baseline(vm, source='system', context='admin_repull_baseline')
     if vm.status != 'failed':
         flash(f'VM "{vm.name}" is not in failed state (status: {vm.status}).', 'warning')
         return _redirect_overview()
@@ -397,7 +403,7 @@ def repull_vm(vm_id):
             registry_tag,
             expected_disk_gb=vm.disk_size_gb,
         )
-        vm.status = 'pulling'
+        set_vm_status(vm, 'pulling', source='ui', context='admin_repull_vm')
         vm.status_detail = None
         db.session.commit()
         flash(f'Re-pull started for VM "{vm.name}" on "{vm.node.name}".', 'info')
@@ -425,7 +431,7 @@ def delete_vm(vm_id):
             current_app.tart.delete_vm(vm.node, vm.name)
             _verify_vm_absent_on_node(vm.node, vm.name, 'admin_delete_vm')
         except TartAPIError as e:
-            vm.status = 'failed'
+            set_vm_status(vm, 'failed', source='ui', context='admin_delete_vm_failed')
             vm.status_detail = f'Admin delete failed on node: {e}'
             db.session.commit()
             flash(f'Failed to delete VM "{vm.name}" on node: {e}', 'danger')

@@ -1,4 +1,5 @@
 import logging
+import secrets
 import threading
 import time
 from flask import render_template, redirect, url_for, flash, current_app, request
@@ -8,7 +9,8 @@ from simple_websocket.errors import ConnectionClosed
 from app.console import bp
 from app.models import VM
 from app.tart_client import TartAPIError
-from app.extensions import sock
+from app.extensions import db, sock
+from app.usage_events import close_vnc_session, ensure_vm_status_baseline, start_vnc_session
 import websocket
 
 logger = logging.getLogger(__name__)
@@ -215,6 +217,7 @@ def download_vncloc(vm_name):
 def console_ws(ws, vm_name):
     """Same-origin websocket bridge: browser <-> backend websockify."""
     session_started = time.monotonic()
+    session_token = None
     logger.info("console_ws(%s) opened websocket request", vm_name)
     try:
         if not current_user.is_authenticated:
@@ -232,6 +235,7 @@ def console_ws(ws, vm_name):
             )
             ws.close()
             return
+        ensure_vm_status_baseline(vm, source='system', context='console_ws_baseline')
 
         direct = _vnc_direct_targets.get(vm_name)
         if direct:
@@ -256,6 +260,9 @@ def console_ws(ws, vm_name):
                 vm_name,
                 backend_connect_ms,
             )
+            session_token = secrets.token_urlsafe(24)
+            start_vnc_session(vm, session_token=session_token)
+            db.session.commit()
         except Exception as e:
             logger.warning("console_ws(%s) failed to reach backend %s: %s", vm_name, backend_url, e)
             ws.close()
@@ -389,6 +396,12 @@ def console_ws(ws, vm_name):
                     metrics['first_tunnel_to_browser_ms'],
                     metrics['backend_recv_timeouts'],
                 )
+            if session_token:
+                close_vnc_session(
+                    session_token=session_token,
+                    disconnect_reason='ws_bridge_closed',
+                )
+                db.session.commit()
 
         try:
             with ws_send_lock:
@@ -400,6 +413,12 @@ def console_ws(ws, vm_name):
             logger.exception("console_ws(%s) websocket close error", vm_name)
     except Exception:
         logger.exception("console_ws(%s) unexpected bridge error", vm_name)
+        if session_token:
+            close_vnc_session(
+                session_token=session_token,
+                disconnect_reason='ws_bridge_error',
+            )
+            db.session.commit()
         try:
             with ws_send_lock:
                 ws.close()

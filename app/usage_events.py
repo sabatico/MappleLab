@@ -32,6 +32,23 @@ def record_vm_status_transition(vm, from_status, to_status, source, context, cha
     return event
 
 
+def set_vm_status(vm, to_status, source, context, changed_at=None):
+    """
+    Update VM.status and record a transition event when it changes.
+    """
+    from_status = vm.status
+    vm.status = to_status
+    if from_status != to_status:
+        record_vm_status_transition(
+            vm=vm,
+            from_status=from_status,
+            to_status=to_status,
+            source=source,
+            context=context,
+            changed_at=changed_at,
+        )
+
+
 def ensure_vm_status_baseline(vm, source='system', context='baseline'):
     """
     Ensure at least one status event exists for this VM.

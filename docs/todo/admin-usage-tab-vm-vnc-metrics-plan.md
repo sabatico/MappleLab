@@ -3,7 +3,7 @@
 ## Implementation Progress
 
 - [x] Module 1: Add schema tables and shared usage-event helpers.
-- [ ] Module 2: Instrument VM status and VNC lifecycle writes.
+- [x] Module 2: Instrument VM status and VNC lifecycle writes.
 - [ ] Module 3: Build usage aggregation service + admin Usage tab UI.
 - [ ] Module 4: Validation pass, lint/test checks, and final polish.
 

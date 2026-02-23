@@ -7,6 +7,7 @@ from app.extensions import db
 from app.models import VM, Node
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
+from app.usage_events import ensure_vm_status_baseline, set_vm_status
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def _sync_vm_status_from_agent(vm, node_vms_by_name=None):
 
     normalized = _normalize_agent_vm_status(_agent_vm_state(node_vm))
     if normalized and vm.status != normalized:
-        vm.status = normalized
+        set_vm_status(vm, normalized, source='api_poller', context='sync_vm_status_from_agent')
         vm.status_detail = None
         if normalized == 'running':
             vm.last_started_at = datetime.utcnow()
@@ -137,7 +138,7 @@ def _advance_async_op(vm):
 
     op = current_app.tart.get_op_status(vm.node, vm.name)
     if op.get('status') == 'idle':
-        vm.status = 'failed'
+        set_vm_status(vm, 'failed', source='api_poller', context='advance_async_idle')
         vm.status_detail = (
             'Operation state was lost on the node agent (reported idle). '
             'Please retry save/resume/migrate.'
@@ -151,7 +152,7 @@ def _advance_async_op(vm):
             if target_node_id:
                 target_node = Node.query.filter_by(id=target_node_id, active=True).first()
                 if not target_node:
-                    vm.status = 'archived'
+                    set_vm_status(vm, 'archived', source='api_poller', context='migration_push_done_target_unavailable')
                     vm.node_id = None
                     vm.last_saved_at = datetime.utcnow()
                     vm.status_detail = (
@@ -166,25 +167,25 @@ def _advance_async_op(vm):
                         registry_tag,
                         expected_disk_gb=vm.disk_size_gb,
                     )
-                    vm.status = 'pulling'
+                    set_vm_status(vm, 'pulling', source='api_poller', context='migration_restore_started')
                     vm.node_id = target_node.id
                     vm.status_detail = None
                 _verify_vm_absent_on_node(source_node, vm.name, 'migration_push_done')
             else:
-                vm.status = 'archived'
+                set_vm_status(vm, 'archived', source='api_poller', context='archive_push_done')
                 vm.node_id = None
                 vm.last_saved_at = datetime.utcnow()
                 vm.status_detail = None
                 _verify_vm_absent_on_node(source_node, vm.name, 'archive_push_done')
         elif vm.status == 'pulling':
-            vm.status = 'running'
+            set_vm_status(vm, 'running', source='api_poller', context='restore_done')
             vm.last_started_at = datetime.utcnow()
             vm.status_detail = None
             cleanup_vm_registry_tag(vm, operation='restore_success')
         return True
 
     if op.get('status') == 'error':
-        vm.status = 'failed'
+        set_vm_status(vm, 'failed', source='api_poller', context='advance_async_error')
         vm.status_detail = _normalize_async_error(op.get('error', 'Unknown error'))
         return True
 
@@ -215,6 +216,8 @@ def list_vms():
     logger.debug("list_vms() — htmx=%s user=%s", is_htmx, current_user.username)
 
     vms = VM.query.filter_by(user_id=current_user.id).all()
+    for vm in vms:
+        ensure_vm_status_baseline(vm, source='system', context='list_vms_baseline')
 
     # Advance async ops and reconcile local statuses from agent VM states.
     changed = False
@@ -272,6 +275,7 @@ def vm_status(vm_name):
     logger.debug("vm_status(vm_name=%r) — htmx=%s", vm_name, is_htmx)
 
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    ensure_vm_status_baseline(vm, source='system', context='vm_status_baseline')
 
     # If async op in progress, poll the agent for completion.
     if vm.status in ('pushing', 'pulling') and vm.node:
@@ -301,6 +305,7 @@ def vm_operation(vm_name):
     Includes live stage and transfer metrics when agent reports them.
     """
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    ensure_vm_status_baseline(vm, source='system', context='vm_operation_baseline')
     op = None
     changed = False
 
