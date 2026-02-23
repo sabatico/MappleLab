@@ -6,6 +6,8 @@ charset-normalizer==3.4.4
 click==8.3.1
 cryptography==46.0.5
 Flask==3.1.0
+Flask-Mail
+Flask-Migrate
 Flask-Sock==0.7.0
 Flask-Bcrypt==1.0.1
 Flask-Login==0.6.3

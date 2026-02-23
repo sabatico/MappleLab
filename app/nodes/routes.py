@@ -1,27 +1,13 @@
 import logging
 from flask import render_template, redirect, url_for, flash, request, jsonify
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.nodes import bp
 from app.extensions import db
 from app.models import Node
 from app.tart_client import TartAPIError
+from app.utils import admin_required
 
 logger = logging.getLogger(__name__)
-
-
-def admin_required(f):
-    """Decorator: requires current_user.is_admin."""
-    from functools import wraps
-
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            flash('Admin access required.', 'danger')
-            return redirect(url_for('main.dashboard'))
-        return f(*args, **kwargs)
-
-    return decorated
-
 
 @bp.route('/')
 @login_required

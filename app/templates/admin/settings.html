@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Settings</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3">SMTP (Invitation Emails)</h6>
+                <form method="POST" action="{{ url_for('admin.settings') }}">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">SMTP Host</label>
+                            <input type="text" class="form-control" name="smtp_host"
+                                   value="{{ settings.smtp_host if settings else '' }}"
+                                   placeholder="smtp.company.com">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">SMTP Port</label>
+                            <input type="number" class="form-control" name="smtp_port"
+                                   value="{{ settings.smtp_port if settings else 587 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">SMTP Username</label>
+                            <input type="text" class="form-control" name="smtp_user"
+                                   value="{{ settings.smtp_user if settings else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">SMTP Password</label>
+                            <input type="password" class="form-control" name="smtp_password"
+                                   value="{{ settings.smtp_password if settings else '' }}">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">From Address</label>
+                            <input type="text" class="form-control" name="smtp_from"
+                                   value="{{ settings.smtp_from if settings else '' }}"
+                                   placeholder="orchard@company.com">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="smtp_use_tls"
+                                       name="smtp_use_tls"
+                                       {{ 'checked' if (settings and settings.smtp_use_tls) or not settings else '' }}>
+                                <label class="form-check-label" for="smtp_use_tls">
+                                    Use TLS (STARTTLS)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
+                <hr>
+                <form method="POST" action="{{ url_for('admin.test_email') }}" class="row g-2">
+                    <div class="col-md-8">
+                        <input type="email" class="form-control" name="test_email_to"
+                               placeholder="Test recipient email" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-outline-info w-100">
+                            <i class="bi bi-envelope-check"></i> Send Test Email
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

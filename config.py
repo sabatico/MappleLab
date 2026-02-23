@@ -26,6 +26,15 @@ class Config:
     # Shared secret for TART agent authentication
     AGENT_TOKEN = os.environ.get('AGENT_TOKEN', '')
 
+    # Mail defaults. Runtime SMTP settings are loaded from DB AppSettings.
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', '')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = _env_bool('MAIL_USE_TLS', True)
+    MAIL_USE_SSL = _env_bool('MAIL_USE_SSL', False)
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', '')
+
     # SSH tunnel port range (each active VNC console uses one local port)
     # Reuses the same env vars for backwards compatibility
     WEBSOCKIFY_PORT_MIN = int(os.environ.get('WEBSOCKIFY_PORT_MIN', 6900))

@@ -34,7 +34,7 @@ def create_app(config_class=None):
     # --- Create DB tables (no-op if already exist) ---
     from app.extensions import db
     with app.app_context():
-        from app.models import User, VM, Node  # noqa: F401
+        from app.models import User, VM, Node, AppSettings  # noqa: F401
         db.create_all()
     logger.debug("Database tables ensured")
 
@@ -76,6 +76,10 @@ def create_app(config_class=None):
     from app.nodes import bp as nodes_bp
     app.register_blueprint(nodes_bp, url_prefix='/nodes')
     logger.debug("Blueprint registered: nodes (prefix=/nodes)")
+
+    from app.admin import bp as admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+    logger.debug("Blueprint registered: admin (prefix=/admin)")
 
     # --- Shutdown hook: close all SSH tunnels ---
     atexit.register(app.tunnel_manager.cleanup_all)

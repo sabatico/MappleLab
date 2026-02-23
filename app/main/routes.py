@@ -173,6 +173,32 @@ def _redirect_after_action(vm_name):
     return redirect(request.referrer or url_for('main.vm_detail', vm_name=vm_name))
 
 
+def _active_vm_count_for_user(user_id):
+    return VM.query.filter_by(user_id=user_id).filter(
+        VM.status.in_(('creating', 'running', 'stopped', 'failed', 'pushing', 'pulling'))
+    ).count()
+
+
+def _saved_vm_count_for_user(user_id):
+    return VM.query.filter_by(user_id=user_id, status='archived').count()
+
+
+def _saved_vm_disk_used_gb_for_user(user_id):
+    rows = VM.query.filter_by(user_id=user_id, status='archived').all()
+    return round(sum((vm.disk_size_gb or 0) for vm in rows), 1)
+
+
+def _user_quota_snapshot(user):
+    return {
+        'active_count': _active_vm_count_for_user(user.id),
+        'saved_count': _saved_vm_count_for_user(user.id),
+        'saved_disk_used_gb': _saved_vm_disk_used_gb_for_user(user.id),
+        'max_active_vms': user.max_active_vms or 1,
+        'max_saved_vms': user.max_saved_vms or 2,
+        'disk_quota_gb': user.disk_quota_gb or 100,
+    }
+
+
 def _check_registry_space_for_save(vm):
     """
     Fast preflight for save/migrate:
@@ -250,7 +276,8 @@ def dashboard():
     logger.debug("dashboard() — user=%s", current_user.username)
     _reconcile_local_vms_for_user(current_user.id)
     vms = VM.query.filter_by(user_id=current_user.id).all()
-    return render_template('main/dashboard.html', vms=vms)
+    quota = _user_quota_snapshot(current_user)
+    return render_template('main/dashboard.html', vms=vms, quota=quota)
 
 
 @bp.route('/vms/create', methods=['GET', 'POST'])
@@ -289,6 +316,10 @@ def create_vm():
         flash('Image is required.', 'warning')
         return render_template('main/create_vm.html',
                                images=current_app.config['TART_IMAGES'])
+
+    if _active_vm_count_for_user(current_user.id) >= (current_user.max_active_vms or 1):
+        flash(f'Active VM limit ({current_user.max_active_vms}) reached.', 'danger')
+        return redirect(url_for('main.dashboard'))
 
     node = current_app.node_manager.find_best_node()
     if not node:
@@ -378,6 +409,28 @@ def save_vm(vm_name):
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     node = vm.node
+
+    if _saved_vm_count_for_user(current_user.id) >= (current_user.max_saved_vms or 2):
+        flash(f'Saved VM limit ({current_user.max_saved_vms}) reached.', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    size_info = None
+    try:
+        node_vms = current_app.tart.list_vms(node)
+        size_info = next((item for item in node_vms if _agent_vm_name(item) == vm.name), None)
+    except TartAPIError:
+        size_info = None
+    current_vm_size_gb = _agent_vm_size_on_disk_gb(size_info) or 0
+    used_saved_gb = _saved_vm_disk_used_gb_for_user(current_user.id)
+    projected_gb = round(used_saved_gb + current_vm_size_gb, 1)
+    if projected_gb > (current_user.disk_quota_gb or 100):
+        flash(
+            f'Disk quota exceeded. Required {projected_gb:.1f} GB, '
+            f'quota is {current_user.disk_quota_gb} GB.',
+            'danger',
+        )
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
     ok, required_gb, available_gb, reason = _check_registry_space_for_save(vm)
     if not ok:
         flash(reason, 'danger')
@@ -395,6 +448,7 @@ def save_vm(vm_name):
         registry_tag = _sanitize_registry_tag(vm.registry_tag)
         if registry_tag != vm.registry_tag:
             vm.registry_tag = registry_tag
+        vm.disk_size_gb = current_vm_size_gb or vm.disk_size_gb
         current_app.tart.save_vm(node, vm_name, registry_tag)
         vm.status = 'pushing'
         db.session.commit()
@@ -493,6 +547,10 @@ def resume_vm(vm_name):
     if vm.status != 'archived':
         flash(f'VM is not archived (status: {vm.status}).', 'warning')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    if _active_vm_count_for_user(current_user.id) >= (current_user.max_active_vms or 1):
+        flash(f'Active VM limit ({current_user.max_active_vms}) reached.', 'danger')
+        return redirect(url_for('main.dashboard'))
 
     node = current_app.node_manager.find_best_node()
     if not node:

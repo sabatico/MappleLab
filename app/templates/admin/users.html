@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-people"></i> Manage Users</h2>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Create User</div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.create_user') }}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Role</label>
+                    <select name="role" class="form-select">
+                        <option value="user" selected>User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Active VM limit</label>
+                    <input type="number" min="1" name="max_active_vms" class="form-control" value="1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Saved VM limit</label>
+                    <input type="number" min="1" name="max_saved_vms" class="form-control" value="2">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Disk quota (GB)</label>
+                    <input type="number" min="1" name="disk_quota_gb" class="form-control" value="100">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-person-plus"></i> Create + Invite
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Limits</th>
+                    <th>Last login</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.email or user.username }}</td>
+                    <td>
+                        <span class="badge {{ 'bg-warning text-dark' if user.is_admin else 'bg-secondary' }}">
+                            {{ 'Admin' if user.is_admin else 'User' }}
+                        </span>
+                    </td>
+                    <td>
+                        <small>
+                            Active: {{ user.max_active_vms }} /
+                            Saved: {{ user.max_saved_vms }} /
+                            Quota: {{ user.disk_quota_gb }}GB
+                        </small>
+                    </td>
+                    <td><small>{{ user.last_login_at.strftime('%Y-%m-%d %H:%M') if user.last_login_at else 'Never' }}</small></td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary"
+                           href="{{ url_for('admin.edit_user', user_id=user.id) }}">
+                            <i class="bi bi-sliders"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('admin.resend_invite', user_id=user.id) }}"
+                              style="display:inline-block;">
+                            <button type="submit" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-envelope"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+                              style="display:inline-block;"
+                              onsubmit="return confirm('Delete user {{ user.email or user.username }} and all their VM records?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
