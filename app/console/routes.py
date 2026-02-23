@@ -120,6 +120,7 @@ def vnc(vm_name):
         ws_path=f'/console/ws/{vm_name}',
         direct_ws_url=direct_ws_url,
         vnc_username=current_app.config['VNC_DEFAULT_USERNAME'],
+        vnc_password=current_app.config['VNC_DEFAULT_PASSWORD'],
     )
 
 
