@@ -16,9 +16,12 @@ RESTART_CMD="${RESTART_CMD:-}"
 echo "==> Deploying Orchard UI from $REMOTE/$BRANCH"
 cd "$REPO_DIR"
 
-echo "==> Fetch + pull (merge if diverged)"
+echo "==> Fetch + update to $REMOTE/$BRANCH"
 git fetch "$REMOTE" "$BRANCH"
-git pull "$REMOTE" "$BRANCH"
+if ! git pull --ff-only "$REMOTE" "$BRANCH" 2>/dev/null; then
+  echo "==> Branches diverged, resetting to $REMOTE/$BRANCH (no merge commit)"
+  git reset --hard "$REMOTE/$BRANCH"
+fi
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   echo "!! Virtualenv not found at $VENV_DIR"
