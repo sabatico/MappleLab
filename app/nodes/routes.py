@@ -139,7 +139,12 @@ def toggle_node(node_id):
         flash(f'Node "{node.name}" activated.', 'success')
         return redirect(url_for('nodes.index'))
 
-    # Deactivate path: first archive local running/stopped VMs on this node.
+    # Deactivate path: mark node inactive immediately so scheduler/migration
+    # target selection cannot place new work here while drain is in progress.
+    node.active = False
+    db.session.commit()
+
+    # Then archive local running/stopped VMs on this node.
     blocked = VM.query.filter_by(node_id=node.id).filter(
         VM.status.in_(('creating', 'pushing', 'pulling'))
     ).all()
@@ -147,8 +152,9 @@ def toggle_node(node_id):
         names = ', '.join(vm.name for vm in blocked[:5])
         suffix = '...' if len(blocked) > 5 else ''
         flash(
-            f'Cannot deactivate "{node.name}" while operations are in progress '
-            f'(creating/pushing/pulling): {names}{suffix}',
+            f'Node "{node.name}" marked inactive. '
+            f'Some operations are still in progress (creating/pushing/pulling): '
+            f'{names}{suffix}. Wait for completion, then verify remaining VMs are archived.',
             'warning',
         )
         return redirect(url_for('nodes.index'))
@@ -172,14 +178,12 @@ def toggle_node(node_id):
 
     if errors:
         flash(
-            f'Node "{node.name}" NOT deactivated. Failed to archive {len(errors)} VM(s). '
-            f'First error: {errors[0]}',
-            'danger',
+            f'Node "{node.name}" remains inactive, but failed to archive {len(errors)} VM(s). '
+            f'First error: {errors[0]}. Resolve VM issues before reactivating this node.',
+            'warning',
         )
         return redirect(url_for('nodes.index'))
 
-    node.active = False
-    db.session.commit()
     flash(
         f'Node "{node.name}" deactivated. Archived {archived_count} VM(s) from this node first.',
         'success',

@@ -243,6 +243,12 @@ def start_vm(vm_id):
     if not vm.node:
         flash(f'VM "{vm.name}" has no assigned node.', 'warning')
         return _redirect_overview()
+    if not vm.node.active:
+        flash(
+            f'Node "{vm.node.name}" is deactivated; start is blocked for "{vm.name}".',
+            'warning',
+        )
+        return _redirect_overview()
 
     try:
         current_app.tart.start_vm(vm.node, vm.name)
@@ -366,6 +372,12 @@ def repull_vm(vm_id):
         return _redirect_overview()
     if not vm.node:
         flash(f'VM "{vm.name}" has no assigned node for re-pull.', 'warning')
+        return _redirect_overview()
+    if not vm.node.active:
+        flash(
+            f'Node "{vm.node.name}" is deactivated; re-pull is blocked for "{vm.name}".',
+            'warning',
+        )
         return _redirect_overview()
     if not vm.registry_tag:
         flash(f'VM "{vm.name}" has no registry tag; cannot re-pull.', 'danger')

@@ -530,6 +530,12 @@ def migrate_vm(vm_name):
     if not vm.node:
         flash('VM has no assigned node to migrate from.', 'warning')
         return _redirect_after_action(vm_name)
+    if not vm.node.active:
+        flash(
+            f'Node "{vm.node.name}" is deactivated; migration is blocked for VMs on this node.',
+            'warning',
+        )
+        return _redirect_after_action(vm_name)
 
     target_node_id = request.form.get('target_node_id', type=int)
     if not target_node_id:
@@ -651,6 +657,12 @@ def repull_vm(vm_name):
     if not vm.node:
         flash('VM has no assigned node for re-pull.', 'warning')
         return _redirect_after_action(vm_name)
+    if not vm.node.active:
+        flash(
+            f'Node "{vm.node.name}" is deactivated; re-pull on this node is blocked.',
+            'warning',
+        )
+        return _redirect_after_action(vm_name)
     if not vm.registry_tag:
         flash('VM has no registry tag; cannot re-pull.', 'danger')
         return _redirect_after_action(vm_name)
@@ -687,6 +699,12 @@ def start_vm(vm_name):
         return _redirect_after_action(vm_name)
     if not vm.node:
         flash('VM has no assigned node. Use Resume for archived VMs.', 'warning')
+        return _redirect_after_action(vm_name)
+    if not vm.node.active:
+        flash(
+            f'Node "{vm.node.name}" is deactivated; start is blocked on this node.',
+            'warning',
+        )
         return _redirect_after_action(vm_name)
     if _active_vm_count_for_user(current_user.id) >= (current_user.max_active_vms or 1):
         flash(f'Active VM limit ({current_user.max_active_vms}) reached.', 'danger')
