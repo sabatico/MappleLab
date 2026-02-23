@@ -63,15 +63,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Show overlay for full-page form submissions.
+    // Use bubbling so inline onsubmit handlers (confirm dialogs) run first.
     document.addEventListener('submit', (evt) => {
         const form = evt.target;
         if (!(form instanceof HTMLFormElement)) return;
         if (form.hasAttribute('data-no-loading-overlay')) return;
+        if (evt.defaultPrevented) return;
         beginPending();
-    }, true);
+    });
 
     // Show overlay for normal page navigation link clicks.
     document.addEventListener('click', (evt) => {
+        if (evt.defaultPrevented) return;
+        if (evt.button !== 0) return;
+        if (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
         const link = evt.target.closest('a');
         if (!link) return;
         if (link.target === '_blank') return;
@@ -80,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
         if (link.hasAttribute('data-no-loading-overlay')) return;
         beginPending();
-    }, true);
+    });
 
     // HTMX requests should also trigger the same centralized loading overlay.
     document.body.addEventListener('htmx:beforeRequest', (evt) => {
