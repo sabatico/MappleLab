@@ -26,6 +26,32 @@ def _agent_vm_state(item):
     return (item or {}).get('status') or (item or {}).get('state') or (item or {}).get('State')
 
 
+def _as_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _agent_vm_size_on_disk_gb(item):
+    """
+    Extract VM SizeOnDisk (GB) from agent payload across key variants.
+    """
+    if not item:
+        return None
+    candidates = (
+        item.get('SizeOnDisk'),
+        item.get('sizeOnDisk'),
+        item.get('sizeondisk'),
+        item.get('size_on_disk'),
+    )
+    for candidate in candidates:
+        parsed = _as_float(candidate)
+        if parsed is not None:
+            return parsed
+    return None
+
+
 def _sanitize_registry_tag(tag):
     """
     Ensure OCI registry tag is tart-compatible.
@@ -93,6 +119,47 @@ def _reconcile_local_vms_for_user(user_id):
 def _redirect_after_action(vm_name):
     """Return to current page when possible; fall back to vm detail."""
     return redirect(request.referrer or url_for('main.vm_detail', vm_name=vm_name))
+
+
+def _check_registry_space_for_save(vm):
+    """
+    Fast preflight for save/migrate:
+    compare VM on-disk size to node free disk before starting push.
+    Returns (ok, required_gb, available_gb, reason).
+    """
+    if not vm.node:
+        return False, None, None, 'VM has no assigned source node.'
+
+    try:
+        node_vms = current_app.tart.list_vms(vm.node)
+    except TartAPIError as e:
+        return False, None, None, f'Could not read VM size from source node: {e}'
+
+    node_vm = next((item for item in node_vms if _agent_vm_name(item) == vm.name), None)
+    size_gb = _agent_vm_size_on_disk_gb(node_vm)
+    if size_gb is None:
+        return False, None, None, 'Could not determine VM SizeOnDisk from node.'
+
+    try:
+        health = current_app.tart.get_health(vm.node)
+    except TartAPIError as e:
+        return False, None, None, f'Could not read free disk from source node: {e}'
+
+    free_gb = _as_float((health or {}).get('disk_free_gb'))
+    if free_gb is None:
+        return False, None, None, 'Source node did not report free disk information.'
+
+    # Safety headroom for registry temp upload files and metadata.
+    required_gb = round(size_gb + 2.0, 1)
+    available_gb = round(free_gb, 1)
+    if available_gb < required_gb:
+        return False, required_gb, available_gb, (
+            f'Not enough free space for save/migrate. '
+            f'Required {required_gb:.1f} GB (VM size {size_gb:.1f} + 2.0 GB buffer), '
+            f'available {available_gb:.1f} GB.'
+        )
+
+    return True, required_gb, available_gb, None
 
 
 def _migration_candidates(current_node_id):
@@ -245,6 +312,19 @@ def save_vm(vm_name):
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
     node = vm.node
+    ok, required_gb, available_gb, reason = _check_registry_space_for_save(vm)
+    if not ok:
+        flash(reason, 'danger')
+        logger.warning(
+            "save_vm() — preflight failed for %r on %s: required=%s available=%s reason=%s",
+            vm_name,
+            node.name if node else 'unknown',
+            required_gb,
+            available_gb,
+            reason,
+        )
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
     try:
         registry_tag = _sanitize_registry_tag(vm.registry_tag)
         if registry_tag != vm.registry_tag:
@@ -297,6 +377,19 @@ def migrate_vm(vm_name):
             return _redirect_after_action(vm_name)
     except TartAPIError as e:
         flash(f'Target node "{target_node.name}" is unreachable: {e}', 'danger')
+        return _redirect_after_action(vm_name)
+
+    ok, required_gb, available_gb, reason = _check_registry_space_for_save(vm)
+    if not ok:
+        flash(reason, 'danger')
+        logger.warning(
+            "migrate_vm() — preflight failed for %r on %s: required=%s available=%s reason=%s",
+            vm_name,
+            vm.node.name if vm.node else 'unknown',
+            required_gb,
+            available_gb,
+            reason,
+        )
         return _redirect_after_action(vm_name)
 
     try:
