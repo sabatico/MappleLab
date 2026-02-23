@@ -5,20 +5,12 @@
 {% block head %}
 <style>
 .usage-table {
-    table-layout: fixed;
+    table-layout: auto;
+    width: 100%;
 }
-.usage-table .col-vm { width: 70px; }
-.usage-table .col-status { width: 70px; }
-.usage-table .col-name { width: 100px; }
-.usage-table .col-composition { width: 1%; }  /* takes remaining space */
-.usage-table .col-durations { width: 120px; }
-.usage-table td:nth-child(1),
-.usage-table th:nth-child(1),
-.usage-table td:nth-child(3),
-.usage-table th:nth-child(3) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.usage-table th,
+.usage-table td {
+    vertical-align: middle;
 }
 </style>
 {% endblock %}
@@ -43,11 +35,11 @@
                             <table class="table table-sm table-striped mb-0 align-middle usage-table">
                                 <thead>
                                     <tr>
-                                        <th class="col-vm">VM</th>
-                                        <th class="col-status">Status</th>
-                                        <th class="col-name">Node</th>
-                                        <th class="col-composition">Lifetime Composition</th>
-                                        <th class="col-durations">Durations</th>
+                                        <th>VM</th>
+                                        <th>Status</th>
+                                        <th>Node</th>
+                                        <th>Lifetime Composition</th>
+                                        <th>Durations</th>
                                     </tr>
                                 </thead>
                                 <tbody>
