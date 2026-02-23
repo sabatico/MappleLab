@@ -291,6 +291,33 @@ security set-keychain-settings -t 0 login.keychain
 ### Enable automatic login
 Set automatic login in System Settings > Users & Groups so Tart/keychain-backed operations can run after reboot without an interactive login prompt.
 
+### macOS Tahoe local-network permission (important)
+
+On fresh Tahoe installs, `tart pull` can fail with:
+
+- `Error: The Internet connection appears to be offline.`
+
+even when `curl` to the registry works. This is usually macOS Local Network privacy gating for the runtime process.
+
+Check on each node:
+
+- `System Settings > Privacy & Security > Local Network`
+
+Recommended entries for the node user/session:
+
+- `Terminal` → enabled
+- `sshd-session` → enabled (if using SSH sessions for operations)
+- `Python` (venv/system) → enabled when agent/runtime uses python networking
+
+One-time fallback to trigger the permission popup (run on the node as the same user that runs Tart/agent):
+
+```bash
+tart pull <manager-ip>:5001/<user>/<vm>:latest --insecure
+```
+
+If popup appears ("allow to find devices on local network"), click **Allow**.  
+After granting, retry save/migrate/re-pull from Orchard UI.
+
 
 
 
