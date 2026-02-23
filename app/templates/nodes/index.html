@@ -130,7 +130,14 @@
                     <td>
                         <form method="POST"
                               action="{{ url_for('nodes.toggle_node', node_id=node.id) }}"
-                              style="display: inline-block;">
+                              style="display: inline-block;"
+                              {% if node.active %}class="node-deactivate-form"{% endif %}
+                              {% if node.active %}
+                              data-node-id="{{ node.id }}"
+                              data-node-name="{{ node.name }}"
+                              data-deactivate-start-url="{{ url_for('nodes.start_deactivate', node_id=node.id) }}"
+                              data-deactivate-status-template="{{ url_for('nodes.deactivate_status', node_id=node.id, op_id='__OP__') }}"
+                              {% endif %}>
                             <button type="submit"
                                     class="btn btn-sm {{ 'btn-outline-warning' if node.active else 'btn-outline-success' }}">
                                 {% if node.active %}
@@ -163,4 +170,77 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const forms = document.querySelectorAll('form.node-deactivate-form');
+    if (!forms.length) return;
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const setOverlay = (title, detail) => {
+        if (window.setGlobalOverlayMessage) window.setGlobalOverlayMessage(title, detail);
+    };
+
+    forms.forEach((form) => {
+        form.addEventListener('submit', async (evt) => {
+            evt.preventDefault();
+            const nodeName = form.dataset.nodeName || 'node';
+            const startUrl = form.dataset.deactivateStartUrl;
+            const statusTemplate = form.dataset.deactivateStatusTemplate;
+            if (!startUrl || !statusTemplate) return;
+
+            if (!confirm(`Deactivate node '${nodeName}' and archive local running/stopped VMs first?`)) {
+                return;
+            }
+
+            if (window.setGlobalOverlayLock) window.setGlobalOverlayLock(true);
+            setOverlay(`Deactivating ${nodeName}`, 'Starting operation...');
+
+            try {
+                const startResp = await fetch(startUrl, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const started = await startResp.json();
+                if (!startResp.ok || !started.ok || !started.op_id) {
+                    throw new Error((started && started.error) || 'Failed to start deactivation.');
+                }
+                const opId = started.op_id;
+                let done = false;
+                while (!done) {
+                    const statusUrl = statusTemplate.replace('__OP__', opId);
+                    const statusResp = await fetch(statusUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    const status = await statusResp.json();
+                    if (!statusResp.ok || !status.ok) {
+                        throw new Error((status && status.error) || 'Failed reading deactivation status.');
+                    }
+
+                    const total = Number(status.total || 0);
+                    const completed = Number(status.completed || 0);
+                    const currentVm = status.current_vm || '';
+                    const msg = status.message || '';
+                    const progress = total > 0 ? `${completed}/${total}` : `${completed}/0`;
+                    const detail = currentVm ? `${msg} (${progress}) — ${currentVm}` : `${msg} (${progress})`;
+                    setOverlay(`Deactivating ${nodeName}`, detail);
+
+                    const opState = (status.status || '').toLowerCase();
+                    if (opState === 'done' || opState === 'error' || opState === 'blocked') {
+                        done = true;
+                        break;
+                    }
+                    await sleep(2000);
+                }
+
+                // reload to show latest statuses + flash messages from route flows
+                window.location.reload();
+            } catch (err) {
+                const message = (err && err.message) ? err.message : 'Node deactivation failed.';
+                setOverlay(`Deactivating ${nodeName}`, message);
+                alert(message);
+                if (window.setGlobalOverlayLock) window.setGlobalOverlayLock(false);
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
