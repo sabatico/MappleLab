@@ -40,8 +40,14 @@
             {{ '%.1f'|format(transferred) }} / {{ '%.1f'|format(total) }} GB transferred
             {% if percent is not none %}({{ percent }}%) {% endif %}
         </div>
+        {% if last_line %}
+        <div class="small mt-1">{{ last_line }}</div>
+        {% endif %}
         {% elif percent is not none %}
         <div class="small mt-1">{{ percent }}% complete</div>
+        {% if last_line %}
+        <div class="small mt-1">{{ last_line }}</div>
+        {% endif %}
         {% elif last_line %}
         <div class="small mt-1">{{ last_line }}</div>
         {% else %}
