@@ -2,8 +2,43 @@ import atexit
 import logging
 from flask import Flask, request, redirect
 from werkzeug.middleware.proxy_fix import ProxyFix
+from sqlalchemy import inspect, text
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_sqlite_columns(app):
+    """Lightweight schema compatibility for existing SQLite installs."""
+    from app.extensions import db
+
+    if not app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('sqlite'):
+        return
+
+    inspector = inspect(db.engine)
+    users_cols = {col['name'] for col in inspector.get_columns('users')}
+    vms_cols = {col['name'] for col in inspector.get_columns('vms')}
+
+    user_additions = [
+        ('email', 'VARCHAR(255)'),
+        ('max_active_vms', 'INTEGER DEFAULT 1'),
+        ('max_saved_vms', 'INTEGER DEFAULT 2'),
+        ('disk_quota_gb', 'INTEGER DEFAULT 100'),
+        ('must_set_password', 'BOOLEAN DEFAULT 0'),
+        ('invite_token', 'VARCHAR(128)'),
+        ('invited_at', 'DATETIME'),
+        ('last_login_at', 'DATETIME'),
+    ]
+    vm_additions = [('disk_size_gb', 'FLOAT')]
+
+    with db.engine.begin() as conn:
+        for name, ddl in user_additions:
+            if name not in users_cols:
+                conn.execute(text(f'ALTER TABLE users ADD COLUMN {name} {ddl}'))
+                logger.info("SQLite compatibility: added users.%s", name)
+        for name, ddl in vm_additions:
+            if name not in vms_cols:
+                conn.execute(text(f'ALTER TABLE vms ADD COLUMN {name} {ddl}'))
+                logger.info("SQLite compatibility: added vms.%s", name)
 
 
 def create_app(config_class=None):
@@ -36,6 +71,7 @@ def create_app(config_class=None):
     with app.app_context():
         from app.models import User, VM, Node, AppSettings  # noqa: F401
         db.create_all()
+        _ensure_sqlite_columns(app)
     logger.debug("Database tables ensured")
 
     # --- Initialize services ---
