@@ -1,13 +1,21 @@
 import logging
 import secrets
 from datetime import datetime
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required
+from sqlalchemy.orm import selectinload
 from app.admin import bp
 from app.extensions import db, bcrypt
 from app.models import User, VM, AppSettings
+from app.tart_client import TartAPIError
 from app.utils import admin_required
 from app.email import send_invite_email, send_test_email
+from app.main.routes import (
+    _sanitize_registry_tag,
+    _check_registry_space_for_save,
+    _agent_vm_name,
+    _agent_vm_size_on_disk_gb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +28,10 @@ def _int_field(name, default):
         return int(value)
     except ValueError:
         return default
+
+
+def _redirect_overview():
+    return redirect(request.referrer or url_for('admin.overview'))
 
 
 def _upsert_settings_from_form():
@@ -51,6 +63,40 @@ def _upsert_settings_from_form():
 def users():
     user_rows = User.query.order_by(User.created_at.desc()).all()
     return render_template('admin/users.html', users=user_rows)
+
+
+@bp.route('/overview')
+@login_required
+@admin_required
+def overview():
+    """
+    Admin operational overview: all users and their running/stopped/archived VMs
+    with status-aware action controls.
+    """
+    users = User.query.order_by(User.created_at.desc()).all()
+    status_groups = ('running', 'stopped', 'archived')
+    vm_rows = (
+        VM.query
+        .options(selectinload(VM.node))
+        .filter(VM.status.in_(status_groups))
+        .order_by(VM.user_id.asc(), VM.name.asc())
+        .all()
+    )
+
+    grouped = {
+        user.id: {status: [] for status in status_groups}
+        for user in users
+    }
+    for vm in vm_rows:
+        grouped.setdefault(vm.user_id, {status: [] for status in status_groups})
+        grouped[vm.user_id][vm.status].append(vm)
+
+    return render_template(
+        'admin/overview.html',
+        users=users,
+        grouped=grouped,
+        status_groups=status_groups,
+    )
 
 
 @bp.route('/users/create', methods=['POST'])
@@ -87,6 +133,159 @@ def create_user():
     )
     logger.info("Admin created user %s (admin=%s)", email, user.is_admin)
     return redirect(url_for('admin.users'))
+
+
+@bp.route('/vms/<int:vm_id>/start', methods=['POST'])
+@login_required
+@admin_required
+def start_vm(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if vm.status not in ('stopped', 'failed'):
+        flash(f'VM "{vm.name}" is not startable (status: {vm.status}).', 'warning')
+        return _redirect_overview()
+    if not vm.node:
+        flash(f'VM "{vm.name}" has no assigned node.', 'warning')
+        return _redirect_overview()
+
+    try:
+        current_app.tart.start_vm(vm.node, vm.name)
+        vm.status = 'running'
+        vm.last_started_at = datetime.utcnow()
+        vm.status_detail = None
+        db.session.commit()
+        flash(f'VM "{vm.name}" started.', 'success')
+    except TartAPIError as e:
+        flash(f'Start failed for "{vm.name}": {e}', 'danger')
+    return _redirect_overview()
+
+
+@bp.route('/vms/<int:vm_id>/stop', methods=['POST'])
+@login_required
+@admin_required
+def stop_vm(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if vm.status != 'running':
+        flash(f'VM "{vm.name}" is not running (status: {vm.status}).', 'warning')
+        return _redirect_overview()
+    if not vm.node:
+        flash(f'VM "{vm.name}" has no assigned node.', 'warning')
+        return _redirect_overview()
+
+    try:
+        current_app.tart.stop_vnc(vm.node, vm.name)
+    except TartAPIError:
+        pass
+
+    try:
+        current_app.tart.stop_vm(vm.node, vm.name)
+        vm.status = 'stopped'
+        vm.status_detail = None
+        db.session.commit()
+        flash(f'VM "{vm.name}" stopped.', 'success')
+    except TartAPIError as e:
+        flash(f'Stop failed for "{vm.name}": {e}', 'danger')
+    return _redirect_overview()
+
+
+@bp.route('/vms/<int:vm_id>/archive', methods=['POST'])
+@login_required
+@admin_required
+def archive_vm(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if vm.status not in ('running', 'stopped'):
+        flash(f'VM "{vm.name}" is not archivable (status: {vm.status}).', 'warning')
+        return _redirect_overview()
+    if not vm.node:
+        flash(f'VM "{vm.name}" has no assigned source node.', 'warning')
+        return _redirect_overview()
+
+    ok, required_gb, available_gb, reason = _check_registry_space_for_save(vm)
+    if not ok:
+        logger.warning(
+            'admin.archive_vm(%s) preflight failed: required=%s available=%s reason=%s',
+            vm.name, required_gb, available_gb, reason,
+        )
+        flash(reason, 'danger')
+        return _redirect_overview()
+
+    size_info = None
+    try:
+        node_vms = current_app.tart.list_vms(vm.node)
+        size_info = next((item for item in node_vms if _agent_vm_name(item) == vm.name), None)
+    except TartAPIError:
+        size_info = None
+
+    try:
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        vm.disk_size_gb = _agent_vm_size_on_disk_gb(size_info) or vm.disk_size_gb
+        current_app.tart.save_vm(vm.node, vm.name, registry_tag)
+        vm.status = 'pushing'
+        vm.status_detail = None
+        db.session.commit()
+        flash(f'VM "{vm.name}" archiving started (push in progress).', 'info')
+    except TartAPIError as e:
+        flash(f'Archive failed for "{vm.name}": {e}', 'danger')
+    return _redirect_overview()
+
+
+@bp.route('/vms/<int:vm_id>/resume', methods=['POST'])
+@login_required
+@admin_required
+def resume_vm(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if vm.status != 'archived':
+        flash(f'VM "{vm.name}" is not archived (status: {vm.status}).', 'warning')
+        return _redirect_overview()
+
+    node = current_app.node_manager.find_best_node()
+    if not node:
+        flash(f'No available node to resume "{vm.name}".', 'danger')
+        return _redirect_overview()
+
+    try:
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        current_app.tart.restore_vm(node, vm.name, registry_tag)
+        vm.status = 'pulling'
+        vm.node_id = node.id
+        vm.status_detail = None
+        db.session.commit()
+        flash(f'VM "{vm.name}" resume started on "{node.name}".', 'info')
+    except TartAPIError as e:
+        flash(f'Resume failed for "{vm.name}": {e}', 'danger')
+    return _redirect_overview()
+
+
+@bp.route('/vms/<int:vm_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_vm(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if vm.node:
+        try:
+            current_app.tart.stop_vnc(vm.node, vm.name)
+        except TartAPIError:
+            pass
+        try:
+            current_app.tart.stop_vm(vm.node, vm.name)
+        except TartAPIError:
+            pass
+        try:
+            current_app.tart.delete_vm(vm.node, vm.name)
+        except TartAPIError as e:
+            vm.status = 'failed'
+            vm.status_detail = f'Admin delete failed on node: {e}'
+            db.session.commit()
+            flash(f'Failed to delete VM "{vm.name}" on node: {e}', 'danger')
+            return _redirect_overview()
+
+    db.session.delete(vm)
+    db.session.commit()
+    flash(f'VM "{vm.name}" deleted.', 'success')
+    return _redirect_overview()
 
 
 @bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])

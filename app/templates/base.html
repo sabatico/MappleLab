@@ -39,8 +39,8 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">
-                            <i class="bi bi-grid-3x3-gap"></i> Dashboard
+                        <a class="nav-link" href="{{ url_for('admin.overview') if current_user.is_authenticated and current_user.is_admin else url_for('main.dashboard') }}">
+                            <i class="bi bi-grid-3x3-gap"></i> {{ 'Overview' if current_user.is_authenticated and current_user.is_admin else 'Dashboard' }}
                         </a>
                     </li>
                     <li class="nav-item">

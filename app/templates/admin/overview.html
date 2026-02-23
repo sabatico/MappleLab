@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Overview — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-kanban"></i> Admin Overview</h2>
+    <a class="btn btn-outline-primary" href="{{ url_for('admin.users') }}">
+        <i class="bi bi-people"></i> Manage Users
+    </a>
+</div>
+
+{% for user in users %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <strong>{{ user.email or user.username }}</strong>
+            <span class="badge ms-2 {{ 'bg-warning text-dark' if user.is_admin else 'bg-secondary' }}">
+                {{ 'Admin' if user.is_admin else 'User' }}
+            </span>
+        </div>
+        <small class="text-muted">
+            Running: {{ grouped[user.id]['running']|length }} |
+            Stopped: {{ grouped[user.id]['stopped']|length }} |
+            Archived: {{ grouped[user.id]['archived']|length }}
+        </small>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Status</th>
+                    <th>VM</th>
+                    <th>Node</th>
+                    <th>RAM</th>
+                    <th>CPU</th>
+                    <th>Disk</th>
+                    <th style="width: 380px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set ns = namespace(has_rows=false) %}
+                {% for status in status_groups %}
+                    {% for vm in grouped[user.id][status] %}
+                    {% set ns.has_rows = true %}
+                    <tr>
+                        <td>{% include '_partials/vm_status_badge.html' %}</td>
+                        <td class="fw-semibold">{{ vm.name }}</td>
+                        <td>{{ vm.node.name if vm.node else '—' }}</td>
+                        <td>{{ vm.memory_mb ~ ' MB' if vm.memory_mb else '—' }}</td>
+                        <td>{{ vm.cpu if vm.cpu else '—' }}</td>
+                        <td>{{ '%.1f GB'|format(vm.disk_size_gb) if vm.disk_size_gb else '—' }}</td>
+                        <td>
+                            {% if vm.status == 'running' %}
+                            <form method="POST" action="{{ url_for('admin.stop_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-outline-warning"><i class="bi bi-stop-circle"></i> Stop</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.archive_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
+                            </form>
+                            {% elif vm.status == 'stopped' %}
+                            <form method="POST" action="{{ url_for('admin.start_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-primary"><i class="bi bi-play-circle"></i> Start</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.archive_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-warning"><i class="bi bi-cloud-upload"></i> Archive</button>
+                            </form>
+                            {% elif vm.status == 'archived' %}
+                            <form method="POST" action="{{ url_for('admin.resume_vm', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-primary"><i class="bi bi-play-circle"></i> Resume</button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('admin.delete_vm', vm_id=vm.id) }}"
+                                  style="display:inline-block;"
+                                  onsubmit="return confirm('Delete VM \'{{ vm.name }}\'?')">
+                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+                {% if not ns.has_rows %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-3">No running, stopped, or archived VMs.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
