@@ -5,6 +5,10 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 ## Features
 
 - Multi-user login with per-user VM namespacing
+- Invitation-based onboarding (admin creates user, user sets password from invite link)
+- Per-user quotas: active VMs, saved VMs, and saved-disk quota (GB)
+- Admin user management UI (role + quota controls)
+- Admin settings UI for SMTP configuration and test email
 - Multi-node Mac cloud — schedule VMs across multiple Mac Minis automatically
 - Create VMs from TART images (macOS/Linux)
 - Start/stop local VMs from the dashboard
@@ -20,6 +24,7 @@ VM states shown in UI: `creating`, `running`, `stopped`, `pushing`, `archived`, 
 Dashboard polling reconciles DB VM status with each node agent's VM list to avoid stale status labels.
 Delete operations are defensive: manager stops VNC + VM first, then deletes, to handle Tart's "running VM delete appears as not found" behavior.
 Save/migrate actions perform a fast preflight against registry-backed free space and fail early when capacity is insufficient.
+Save quota enforcement uses archived VM sizes from SQL plus current VM `SizeOnDisk` from the node before starting save.
 
 ## Architecture
 
@@ -271,16 +276,8 @@ cd /Users/Shared/TART_Manager
 ./run.sh
 ```
 
-**Create your first user** by visiting `/auth/register`.
-To make yourself an admin, open a flask shell:
-```bash
-flask shell
->>> from app.extensions import db
->>> from app.models import User
->>> u = User.query.filter_by(username='your-username').first()
->>> u.is_admin = True
->>> db.session.commit()
-```
+Initial account bootstrap is now invitation/admin-based.  
+If this is a fresh install with no admins, follow **Bootstrap initial admin (one-time)** in the Multi-user section below.
 
 ---
 
@@ -363,7 +360,10 @@ Set `REGISTRY_URL` in your `.env` (both formats are accepted):
 
 ## Configuration
 
-All config is via environment variables (see `.env.example`):
+Core runtime config is via environment variables (see `.env.example`).
+SMTP can be configured in two ways:
+- Preferred: **Admin UI** -> `Settings` (saved in DB `app_settings`)
+- Optional fallback: environment variables below
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -371,6 +371,13 @@ All config is via environment variables (see `.env.example`):
 | `DATABASE_URL` | `sqlite:///orchard_ui.db` | SQLAlchemy DB URI |
 | `REGISTRY_URL` | `localhost:5001` | Local Docker registry endpoint (`host:port` or `http://host:port/v2/`) |
 | `AGENT_TOKEN` | (empty) | Shared secret for TART agent auth — set same value on all nodes |
+| `MAIL_SERVER` | (empty) | SMTP host fallback (used when admin settings are not configured) |
+| `MAIL_PORT` | `587` | SMTP port fallback |
+| `MAIL_USE_TLS` | `true` | STARTTLS fallback flag |
+| `MAIL_USE_SSL` | `false` | SMTP SSL fallback flag |
+| `MAIL_USERNAME` | (empty) | SMTP username fallback |
+| `MAIL_PASSWORD` | (empty) | SMTP password fallback |
+| `MAIL_DEFAULT_SENDER` | (empty) | Sender email fallback |
 | `VNC_DEFAULT_PASSWORD` | `admin` | TART default VNC password |
 | `VNC_USE_SSH_TUNNEL` | `false` | Route VNC through SSH tunnel (set `true` for WAN/data center) |
 | `VNC_BROWSER_DIRECT_NODE_WS` | `false` | Browser connects directly to node websockify (bypasses Flask WS relay) |
@@ -395,14 +402,15 @@ All config is via environment variables (see `.env.example`):
 orchard_UI/          ← Flask web app (this repo)
 ├── app/
 │   ├── __init__.py          # App factory
-│   ├── models.py            # User, Node, VM ORM models
+│   ├── models.py            # User, Node, VM, AppSettings ORM models
 │   ├── tart_client.py       # HTTP client for TART agents
 │   ├── node_manager.py      # Node scheduling (find best node)
 │   ├── tunnel_manager.py    # SSH tunnel manager (VNC proxy)
 │   ├── main/                # Dashboard, create/start/stop/save/resume/delete routes
 │   ├── api/                 # HTMX polling endpoints
 │   ├── console/             # VNC console routes
-│   ├── auth/                # Login, logout, register
+│   ├── auth/                # Login/logout + invite password setup
+│   ├── admin/               # Manage users + SMTP settings
 │   └── nodes/               # Admin node management
 ├── config.py
 ├── run.py
@@ -417,4 +425,37 @@ tart_agent/          ← Agent (deployed to each Mac node, sibling dir)
 ├── tart_runner.py           # tart CLI wrappers
 ├── vnc_manager.py           # Local websockify lifecycle
 └── requirements.txt
+```
+
+---
+
+## Multi-user Flow
+
+1. Bootstrap one initial admin account (one-time, if DB is empty).
+2. Admin logs in and opens `Manage Users` from the account dropdown.
+3. Admin creates users by email and sets role/quotas:
+   - Active VM limit (default `1`)
+   - Saved VM limit (default `2`)
+   - Saved-disk quota in GB (default `100`)
+4. Admin configures SMTP in `Settings` (or uses env fallback values).
+5. User receives invite email and sets password via `/auth/set-password/<token>`.
+6. After first password set, user logs in with email/password and works within quotas.
+
+### Bootstrap initial admin (one-time)
+
+If you have no admin yet, create one from Flask shell:
+
+```bash
+flask shell
+>>> from app.extensions import db, bcrypt
+>>> from app.models import User
+>>> u = User(
+...     username='admin@example.com',
+...     email='admin@example.com',
+...     password_hash=bcrypt.generate_password_hash('ChangeMeNow123!').decode('utf-8'),
+...     is_admin=True,
+...     must_set_password=False,
+... )
+>>> db.session.add(u)
+>>> db.session.commit()
 ```
