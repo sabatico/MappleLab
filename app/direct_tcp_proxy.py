@@ -1,4 +1,5 @@
 import logging
+import secrets
 import select
 import socket
 import threading
@@ -23,6 +24,7 @@ class DirectTcpProxyManager:
             self.init_app(app)
 
     def init_app(self, app):
+        self._app = app
         self._port_min = app.config.get('VNC_DIRECT_PORT_MIN', 57000)
         self._port_max = app.config.get('VNC_DIRECT_PORT_MAX', 57099)
 
@@ -116,8 +118,54 @@ class DirectTcpProxyManager:
         )
         return local_port
 
-    def _bridge(self, vm_name, client_sock, target_sock):
+    def _record_direct_vnc_session_start(self, vm_name):
+        """Record a direct TCP (.vncloc) VNC session start for usage analytics."""
+        app = getattr(self, '_app', None)
+        if not app:
+            return None
         try:
+            with app.app_context():
+                from app.models import VM
+                from app.usage_events import start_vnc_session
+                from app.extensions import db
+
+                vm = VM.query.filter_by(name=vm_name).first()
+                if not vm or vm.status != 'running':
+                    return None
+                session_token = secrets.token_urlsafe(24)
+                start_vnc_session(vm, session_token=session_token)
+                db.session.commit()
+                return session_token
+        except Exception as e:
+            logger.warning('Failed to record direct VNC session start vm=%s: %s', vm_name, e)
+            return None
+
+    def _record_direct_vnc_session_end(self, session_token):
+        """Record a direct TCP (.vncloc) VNC session end for usage analytics."""
+        if not session_token:
+            return
+        app = getattr(self, '_app', None)
+        if not app:
+            return
+        try:
+            with app.app_context():
+                from app.usage_events import close_vnc_session
+                from app.extensions import db
+
+                close_vnc_session(
+                    session_token=session_token,
+                    disconnect_reason='direct_tcp_closed',
+                )
+                db.session.commit()
+        except Exception as e:
+            logger.warning('Failed to record direct VNC session end: %s', e)
+
+    def _bridge(self, vm_name, client_sock, target_sock):
+        session_token = None
+        try:
+            # Record VNC session for usage analytics (direct TCP .vncloc path)
+            session_token = self._record_direct_vnc_session_start(vm_name)
+
             while True:
                 readable, _, _ = select.select([client_sock, target_sock], [], [], 1)
                 if client_sock in readable:
@@ -133,6 +181,7 @@ class DirectTcpProxyManager:
         except Exception as e:
             logger.debug('Direct proxy bridge closed vm=%s: %s', vm_name, e)
         finally:
+            self._record_direct_vnc_session_end(session_token)
             try:
                 target_sock.close()
             except Exception:
