@@ -176,7 +176,7 @@ Use this checklist as the execution plan for implementation PRs.
 - [x] Implement `resolve_manifest_digest(registry_tag)` using `HEAD/GET /v2/<repo>/manifests/<tag>`
 - [x] Implement `delete_manifest(host, repo, digest)` using `DELETE /v2/<repo>/manifests/<digest>`
 - [x] Implement `cleanup_tag(registry_tag)` with structured result `{ok, digest, status_code, error}`
-- [ ] Add retry/backoff policy and request timeouts
+- [x] Add retry/backoff policy and request timeouts
 - [x] Add idempotent handling for missing tags/manifests
 - [ ] Add unit tests for parser + digest resolution + delete responses
 
@@ -199,7 +199,7 @@ Use this checklist as the execution plan for implementation PRs.
 
 - [x] Add admin endpoint for manual cleanup retry (e.g. `POST /admin/vms/<id>/cleanup-retry`)
 - [x] Add admin button/action in dashboard row for failed cleanup retries
-- [ ] Add server-side guardrails to avoid duplicate concurrent retries
+- [x] Add server-side guardrails to avoid duplicate concurrent retries
 
 ### E. Node cleanup verification (safety checks)
 

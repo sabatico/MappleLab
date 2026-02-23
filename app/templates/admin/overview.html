@@ -63,6 +63,8 @@
                         <td>
                             {% if vm.cleanup_status == 'done' %}
                             <span class="badge bg-success">Done</span>
+                            {% elif vm.cleanup_status == 'pending' %}
+                            <span class="badge bg-info text-dark">Pending</span>
                             {% elif vm.cleanup_status in ('warning', 'failed') %}
                             <span class="badge bg-warning text-dark">Warning</span>
                             {% if vm.cleanup_last_error %}

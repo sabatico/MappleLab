@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -75,6 +76,50 @@ def _registry_manifest_url(host, repo, reference):
     return f'{scheme}://{host}/v2/{repo}/manifests/{reference}'
 
 
+def _request_with_retry(method, url, *, headers=None, timeout=8, attempts=3):
+    """
+    Retry transient network failures and 5xx responses with exponential backoff.
+    """
+    last_exc = None
+    last_resp = None
+    for attempt in range(attempts):
+        try:
+            resp = requests.request(method, url, headers=headers, timeout=timeout)
+            if resp.status_code < 500 or attempt == attempts - 1:
+                return resp, None
+            # Retryable 5xx response.
+            sleep_for = 0.5 * (2 ** attempt)
+            logger.warning(
+                'registry_cleanup %s %s got %s, retrying in %.1fs (%s/%s)',
+                method,
+                url,
+                resp.status_code,
+                sleep_for,
+                attempt + 1,
+                attempts,
+            )
+            last_resp = resp
+            time.sleep(sleep_for)
+        except requests.RequestException as e:
+            last_exc = e
+            if attempt == attempts - 1:
+                break
+            sleep_for = 0.5 * (2 ** attempt)
+            logger.warning(
+                'registry_cleanup %s %s request error=%s, retrying in %.1fs (%s/%s)',
+                method,
+                url,
+                _trim_error(str(e), 120),
+                sleep_for,
+                attempt + 1,
+                attempts,
+            )
+            time.sleep(sleep_for)
+    if last_resp is not None:
+        return last_resp, None
+    return None, last_exc
+
+
 def resolve_manifest_digest(registry_tag, timeout=8):
     parsed = parse_registry_tag(registry_tag)
     url = _registry_manifest_url(parsed['host'], parsed['repo'], parsed['tag'])
@@ -82,7 +127,9 @@ def resolve_manifest_digest(registry_tag, timeout=8):
 
     # Try HEAD first; some registries omit digest on HEAD, so fallback to GET.
     try:
-        head = requests.head(url, headers=headers, timeout=timeout)
+        head, head_error = _request_with_retry('HEAD', url, headers=headers, timeout=timeout)
+        if head_error is not None:
+            raise head_error
         digest = (head.headers.get('Docker-Content-Digest') or '').strip()
         if head.status_code == 404:
             return {'ok': True, 'missing': True, 'digest': None, 'status_code': 404}
@@ -108,7 +155,9 @@ def resolve_manifest_digest(registry_tag, timeout=8):
         }
 
     try:
-        get_resp = requests.get(url, headers=headers, timeout=timeout)
+        get_resp, get_error = _request_with_retry('GET', url, headers=headers, timeout=timeout)
+        if get_error is not None:
+            raise get_error
         digest = (get_resp.headers.get('Docker-Content-Digest') or '').strip()
         if get_resp.status_code == 404:
             return {'ok': True, 'missing': True, 'digest': None, 'status_code': 404}
@@ -134,7 +183,9 @@ def resolve_manifest_digest(registry_tag, timeout=8):
 def delete_manifest(host, repo, digest, timeout=8):
     url = _registry_manifest_url(host, repo, digest)
     try:
-        resp = requests.delete(url, timeout=timeout)
+        resp, req_error = _request_with_retry('DELETE', url, timeout=timeout)
+        if req_error is not None:
+            raise req_error
         if resp.status_code in (200, 202, 404):
             return {'ok': True, 'status_code': resp.status_code}
         return {

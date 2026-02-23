@@ -371,7 +371,13 @@ def cleanup_retry(vm_id):
     if not vm.registry_tag:
         flash(f'VM "{vm.name}" has no registry tag to clean up.', 'warning')
         return _redirect_overview()
+    if vm.cleanup_status == 'pending':
+        flash(f'Cleanup retry for "{vm.name}" is already in progress.', 'info')
+        return _redirect_overview()
 
+    vm.cleanup_status = 'pending'
+    vm.cleanup_last_error = None
+    db.session.commit()
     result = cleanup_vm_registry_tag(vm, operation='admin_cleanup_retry')
     db.session.commit()
     if result.get('ok'):
