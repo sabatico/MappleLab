@@ -163,14 +163,27 @@ def download_vncloc(vm_name):
         flash(f'Failed to prepare VNC endpoint: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
+    # Native VNC clients require raw RFB/TCP to VM VNC, not node websockify WS.
+    # Use VM IP as the direct proxy target.
+    vm_ip = current_app.tart.get_vm_ip(vm.node, vm_name)
+    if not vm_ip:
+        flash(f'Could not determine VM IP for "{vm_name}".', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
     try:
         proxy_port = current_app.direct_tcp_proxy.start_proxy(
             vm_name,
-            vm.node.host,
+            vm_ip,
             vnc_port,
         )
     except Exception as e:
-        logger.error("download_vncloc(%s) failed to start direct proxy: %s", vm_name, e)
+        logger.error(
+            "download_vncloc(%s) failed to start direct proxy to %s:%s: %s",
+            vm_name,
+            vm_ip,
+            vnc_port,
+            e,
+        )
         flash(f'Failed to prepare direct TCP proxy: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
