@@ -46,7 +46,7 @@
 /* Keep VM table rows compact and action buttons on one line more often. */
 .table-vms .vm-image-cell small {
     display: block;
-    max-width: 340px;
+    max-width: 270px;
     font-size: 0.78rem;
     line-height: 1.2;
     white-space: nowrap;
