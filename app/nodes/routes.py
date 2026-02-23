@@ -111,105 +111,106 @@ def _find_running_deactivate_op_for_node(node_id):
     return None, None
 
 
-def _run_node_deactivate(node_id, op_id):
-    node = Node.query.get(node_id)
-    if not node:
-        _set_deactivate_op(op_id, status='error', message='Node not found.')
-        return
+def _run_node_deactivate(app, node_id, op_id):
+    with app.app_context():
+        node = Node.query.get(node_id)
+        if not node:
+            _set_deactivate_op(op_id, status='error', message='Node not found.')
+            return
 
-    _set_deactivate_op(
-        op_id,
-        status='running',
-        node_id=node.id,
-        node_name=node.name,
-        completed=0,
-        total=0,
-        current_vm=None,
-        message='Marking node inactive...',
-        errors=[],
-    )
-
-    # Mark inactive immediately to block new placements/actions.
-    node.active = False
-    db.session.commit()
-
-    blocked = VM.query.filter_by(node_id=node.id).filter(
-        VM.status.in_(('creating', 'pushing', 'pulling'))
-    ).all()
-    if blocked:
-        names = ', '.join(vm.name for vm in blocked[:5])
-        suffix = '...' if len(blocked) > 5 else ''
         _set_deactivate_op(
             op_id,
-            status='blocked',
-            message=(
-                'Node marked inactive, but some operations are still in progress '
-                f'(creating/pushing/pulling): {names}{suffix}.'
-            ),
-            errors=[f'in-progress ops: {names}{suffix}'],
+            status='running',
+            node_id=node.id,
+            node_name=node.name,
+            completed=0,
+            total=0,
+            current_vm=None,
+            message='Marking node inactive...',
+            errors=[],
         )
-        return
 
-    to_archive = VM.query.filter_by(node_id=node.id).filter(
-        VM.status.in_(('running', 'stopped'))
-    ).all()
-    total = len(to_archive)
-    _set_deactivate_op(
-        op_id,
-        total=total,
-        message=f'Archiving VMs: 0/{total}' if total else 'No local VMs to archive.',
-    )
+        # Mark inactive immediately to block new placements/actions.
+        node.active = False
+        db.session.commit()
 
-    archived_count = 0
-    errors = []
-    for idx, vm in enumerate(to_archive, start=1):
+        blocked = VM.query.filter_by(node_id=node.id).filter(
+            VM.status.in_(('creating', 'pushing', 'pulling'))
+        ).all()
+        if blocked:
+            names = ', '.join(vm.name for vm in blocked[:5])
+            suffix = '...' if len(blocked) > 5 else ''
+            _set_deactivate_op(
+                op_id,
+                status='blocked',
+                message=(
+                    'Node marked inactive, but some operations are still in progress '
+                    f'(creating/pushing/pulling): {names}{suffix}.'
+                ),
+                errors=[f'in-progress ops: {names}{suffix}'],
+            )
+            return
+
+        to_archive = VM.query.filter_by(node_id=node.id).filter(
+            VM.status.in_(('running', 'stopped'))
+        ).all()
+        total = len(to_archive)
         _set_deactivate_op(
             op_id,
-            current_vm=vm.name,
-            message=f'Archiving VM {idx}/{total}: {vm.name}',
+            total=total,
+            message=f'Archiving VMs: 0/{total}' if total else 'No local VMs to archive.',
         )
-        try:
-            _archive_vm_for_node_deactivation(node, vm)
-            archived_count += 1
+
+        archived_count = 0
+        errors = []
+        for idx, vm in enumerate(to_archive, start=1):
             _set_deactivate_op(
                 op_id,
-                completed=archived_count,
-                message=f'Archived VM {idx}/{total}: {vm.name}',
+                current_vm=vm.name,
+                message=f'Archiving VM {idx}/{total}: {vm.name}',
             )
-        except (RuntimeError, TartAPIError) as e:
-            logger.error(
-                'deactivate op failed node=%s vm=%s error=%s',
-                node.name, vm.name, e,
-            )
-            errors.append(f'{vm.name}: {e}')
+            try:
+                _archive_vm_for_node_deactivation(node, vm)
+                archived_count += 1
+                _set_deactivate_op(
+                    op_id,
+                    completed=archived_count,
+                    message=f'Archived VM {idx}/{total}: {vm.name}',
+                )
+            except (RuntimeError, TartAPIError) as e:
+                logger.error(
+                    'deactivate op failed node=%s vm=%s error=%s',
+                    node.name, vm.name, e,
+                )
+                errors.append(f'{vm.name}: {e}')
+                _set_deactivate_op(
+                    op_id,
+                    completed=archived_count,
+                    message=f'Failed archiving VM {idx}/{total}: {vm.name}',
+                    errors=list(errors),
+                )
+
+        if errors:
             _set_deactivate_op(
                 op_id,
-                completed=archived_count,
-                message=f'Failed archiving VM {idx}/{total}: {vm.name}',
+                status='error',
+                current_vm=None,
+                message=(
+                    f'Node remains inactive; failed to archive {len(errors)} VM(s). '
+                    f'First error: {errors[0]}'
+                ),
                 errors=list(errors),
             )
+            return
 
-    if errors:
         _set_deactivate_op(
             op_id,
-            status='error',
+            status='done',
             current_vm=None,
-            message=(
-                f'Node remains inactive; failed to archive {len(errors)} VM(s). '
-                f'First error: {errors[0]}'
-            ),
-            errors=list(errors),
+            completed=archived_count,
+            message=f'Node deactivated. Archived {archived_count} VM(s).',
+            errors=[],
         )
-        return
-
-    _set_deactivate_op(
-        op_id,
-        status='done',
-        current_vm=None,
-        completed=archived_count,
-        message=f'Node deactivated. Archived {archived_count} VM(s).',
-        errors=[],
-    )
 
 @bp.route('/')
 @login_required
@@ -266,6 +267,7 @@ def add_node():
 @admin_required
 def toggle_node(node_id):
     node = Node.query.get_or_404(node_id)
+    from flask import current_app
 
     # Activate path stays immediate.
     if not node.active:
@@ -277,7 +279,8 @@ def toggle_node(node_id):
     # Deactivate from this legacy endpoint should now use async tracked flow.
     op_id = str(uuid.uuid4())
     _set_deactivate_op(op_id, status='running', node_id=node.id, node_name=node.name, message='Starting deactivation...')
-    threading.Thread(target=_run_node_deactivate, args=(node.id, op_id), daemon=True).start()
+    app_obj = current_app._get_current_object()
+    threading.Thread(target=_run_node_deactivate, args=(app_obj, node.id, op_id), daemon=True).start()
     flash(
         f'Node "{node.name}" deactivation started. Please monitor progress in the overlay.',
         'info',
@@ -290,6 +293,7 @@ def toggle_node(node_id):
 @admin_required
 def start_deactivate(node_id):
     node = Node.query.get_or_404(node_id)
+    from flask import current_app
     if not node.active:
         return jsonify({'ok': False, 'error': f'Node "{node.name}" is already inactive.'}), 400
 
@@ -299,7 +303,8 @@ def start_deactivate(node_id):
 
     op_id = str(uuid.uuid4())
     _set_deactivate_op(op_id, status='running', node_id=node.id, node_name=node.name, message='Starting deactivation...')
-    threading.Thread(target=_run_node_deactivate, args=(node.id, op_id), daemon=True).start()
+    app_obj = current_app._get_current_object()
+    threading.Thread(target=_run_node_deactivate, args=(app_obj, node.id, op_id), daemon=True).start()
     return jsonify({'ok': True, 'op_id': op_id, 'node_name': node.name})
 
 
