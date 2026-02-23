@@ -84,12 +84,23 @@ def create_app(config_class=None):
         from app.models import User, VM, Node, AppSettings  # noqa: F401
         db.create_all()
         _ensure_sqlite_columns(app)
+        # Security hardening: scrub legacy plaintext SMTP passwords from DB.
+        legacy_smtp_rows = AppSettings.query.filter(AppSettings.smtp_password.isnot(None)).all()
+        if legacy_smtp_rows:
+            for row in legacy_smtp_rows:
+                row.smtp_password = None
+            db.session.commit()
+            logger.warning(
+                "Cleared legacy plaintext SMTP passwords from %d app_settings row(s)",
+                len(legacy_smtp_rows),
+            )
     logger.debug("Database tables ensured")
 
     # --- Initialize services ---
     from app.tart_client import TartClient
     from app.node_manager import NodeManager
     from app.tunnel_manager import TunnelManager
+    from app.direct_tcp_proxy import DirectTcpProxyManager
 
     app.tart = TartClient(app)
     logger.info("TartClient initialised")
@@ -102,6 +113,13 @@ def create_app(config_class=None):
         "TunnelManager initialised — port range %s-%s",
         app.config.get('WEBSOCKIFY_PORT_MIN'),
         app.config.get('WEBSOCKIFY_PORT_MAX'),
+    )
+
+    app.direct_tcp_proxy = DirectTcpProxyManager(app)
+    logger.info(
+        "DirectTcpProxyManager initialised — port range %s-%s",
+        app.config.get('VNC_DIRECT_PORT_MIN'),
+        app.config.get('VNC_DIRECT_PORT_MAX'),
     )
 
     # --- Register blueprints ---
@@ -132,6 +150,8 @@ def create_app(config_class=None):
     # --- Shutdown hook: close all SSH tunnels ---
     atexit.register(app.tunnel_manager.cleanup_all)
     logger.debug("Registered atexit cleanup hook for TunnelManager")
+    atexit.register(app.direct_tcp_proxy.cleanup_all)
+    logger.debug("Registered atexit cleanup hook for DirectTcpProxyManager")
 
     # --- Template context processors ---
     @app.context_processor

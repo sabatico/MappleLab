@@ -40,6 +40,9 @@ class Config:
     # Reuses the same env vars for backwards compatibility
     WEBSOCKIFY_PORT_MIN = int(os.environ.get('WEBSOCKIFY_PORT_MIN', 6900))
     WEBSOCKIFY_PORT_MAX = int(os.environ.get('WEBSOCKIFY_PORT_MAX', 6999))
+    # Raw TCP port range for native VNC client (.vncloc) proxy endpoints.
+    VNC_DIRECT_PORT_MIN = int(os.environ.get('VNC_DIRECT_PORT_MIN', 57000))
+    VNC_DIRECT_PORT_MAX = int(os.environ.get('VNC_DIRECT_PORT_MAX', 57099))
 
     # VNC defaults (TART / Cirrus Labs base image default credentials)
     VNC_PORT = 5900
