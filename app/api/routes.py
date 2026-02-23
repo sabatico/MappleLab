@@ -234,6 +234,6 @@ def vm_status(vm_name):
         db.session.commit()
 
     if is_htmx:
-        return render_template('_partials/vm_status_badge.html', vm=vm)
+        return render_template('_partials/vm_status_area.html', vm=vm)
 
     return jsonify({'name': vm_name, 'status': vm.status})

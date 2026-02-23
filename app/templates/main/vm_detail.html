@@ -17,16 +17,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">{{ vm.name }}</h4>
                 {# Status badge — polls itself every 3s when an async op is running #}
-                <span id="status-area"
-                    {% if vm.status in ('pushing', 'pulling', 'creating') or (vm.status == 'failed' and vm.node) %}
-                    hx-get="{{ url_for('api.vm_status', vm_name=vm.name) }}"
-                    hx-trigger="every 3s"
-                    hx-swap="outerHTML"
-                    hx-target="#status-area"
-                    {% endif %}
-                >
-                    {% include '_partials/vm_status_badge.html' %}
-                </span>
+                {% include '_partials/vm_status_area.html' %}
             </div>
             <div class="card-body">
                 <table class="table table-sm">
@@ -198,4 +189,28 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const shouldLockForStatus = (status) => ['pushing', 'pulling'].includes((status || '').toLowerCase());
+    const currentStatus = () => {
+        const area = document.getElementById('status-area');
+        return area ? area.dataset.vmStatus : '';
+    };
+    const applyOverlayLock = () => {
+        if (typeof window.setGlobalOverlayLock !== 'function') return;
+        window.setGlobalOverlayLock(shouldLockForStatus(currentStatus()));
+    };
+
+    applyOverlayLock();
+    document.body.addEventListener('htmx:afterSwap', (evt) => {
+        const target = evt.detail && evt.detail.target;
+        if (target && target.id === 'status-area') {
+            applyOverlayLock();
+        }
+    });
+});
+</script>
 {% endblock %}

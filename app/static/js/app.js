@@ -24,8 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let pendingRequests = 0;
     const trackedHtmxRequests = new WeakSet();
 
+    const isOverlayLocked = () => overlay.dataset.locked === '1';
     const showOverlay = () => overlay.classList.remove('d-none');
-    const hideOverlay = () => overlay.classList.add('d-none');
+    const hideOverlay = () => {
+        if (isOverlayLocked()) return;
+        overlay.classList.add('d-none');
+    };
     const beginPending = () => {
         pendingRequests += 1;
         showOverlay();
@@ -46,6 +50,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getHtmxXhr = (evt) => {
         return evt && evt.detail ? evt.detail.xhr : null;
+    };
+
+    // Expose a page-level overlay lock for long-running workflows (e.g., VM migrate).
+    window.setGlobalOverlayLock = (locked) => {
+        overlay.dataset.locked = locked ? '1' : '0';
+        if (locked) {
+            showOverlay();
+        } else if (pendingRequests === 0) {
+            overlay.classList.add('d-none');
+        }
     };
 
     // Show overlay for full-page form submissions.
@@ -88,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure overlay clears if page becomes visible again from bfcache/navigation.
     window.addEventListener('pageshow', () => {
         pendingRequests = 0;
+        overlay.dataset.locked = '0';
         hideOverlay();
     });
 });
