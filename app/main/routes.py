@@ -670,6 +670,16 @@ def stop_vm(vm_name):
     if not vm.node:
         flash('VM has no assigned node.', 'danger')
         return _redirect_after_action(vm_name)
+    inactive_limit = current_user.max_saved_vms or 2
+    inactive_now = _saved_vm_count_for_user(current_user.id)
+    # Stopping a running VM turns it into inactive (stopped), so enforce +1.
+    if (inactive_now + 1) > inactive_limit:
+        flash(
+            f'Inactive VM limit ({inactive_limit}) reached. '
+            'Delete or start an older inactive VM first.',
+            'danger',
+        )
+        return _redirect_after_action(vm_name)
 
     current_app.tunnel_manager.stop_tunnel(vm_name)
     try:
