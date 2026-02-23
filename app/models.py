@@ -71,6 +71,47 @@ class VM(db.Model):
     cleanup_last_error = db.Column(db.String(256), nullable=True)
     cleanup_last_run_at = db.Column(db.DateTime, nullable=True)
     cleanup_target_digest = db.Column(db.String(128), nullable=True)
+    status_events = db.relationship('VMStatusEvent', backref='vm', lazy='select')
+    vnc_sessions = db.relationship('VMVncSession', backref='vm', lazy='select')
+
+
+class VMStatusEvent(db.Model):
+    __tablename__ = 'vm_status_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    vm_id = db.Column(db.Integer, db.ForeignKey('vms.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    node_id = db.Column(db.Integer, db.ForeignKey('nodes.id'), nullable=True)
+    from_status = db.Column(db.String(32), nullable=True)
+    to_status = db.Column(db.String(32), nullable=False)
+    changed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    source = db.Column(db.String(32), nullable=False)
+    context = db.Column(db.String(128), nullable=True)
+
+    __table_args__ = (
+        db.Index('ix_vm_status_events_vm_id_changed_at', 'vm_id', 'changed_at'),
+        db.Index('ix_vm_status_events_user_id_changed_at', 'user_id', 'changed_at'),
+        db.Index('ix_vm_status_events_to_status_changed_at', 'to_status', 'changed_at'),
+    )
+
+
+class VMVncSession(db.Model):
+    __tablename__ = 'vm_vnc_sessions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    vm_id = db.Column(db.Integer, db.ForeignKey('vms.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    node_id = db.Column(db.Integer, db.ForeignKey('nodes.id'), nullable=True)
+    connected_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    disconnected_at = db.Column(db.DateTime, nullable=True)
+    disconnect_reason = db.Column(db.String(64), nullable=True)
+    session_token = db.Column(db.String(64), unique=True, nullable=False)
+
+    __table_args__ = (
+        db.Index('ix_vm_vnc_sessions_vm_id_connected_at', 'vm_id', 'connected_at'),
+        db.Index('ix_vm_vnc_sessions_user_id_connected_at', 'user_id', 'connected_at'),
+        db.Index('ix_vm_vnc_sessions_session_token', 'session_token'),
+    )
 
 
 class AppSettings(db.Model):
