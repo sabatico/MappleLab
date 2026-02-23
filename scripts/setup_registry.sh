@@ -16,6 +16,7 @@ echo "Starting registry container..."
 docker run -d \
   -p 5001:5000 \
   -v "$REGISTRY_DATA_DIR:/var/lib/registry" \
+  -e REGISTRY_STORAGE_DELETE_ENABLED=true \
   --restart always \
   --name tart-registry \
   registry:2
@@ -23,5 +24,6 @@ docker run -d \
 echo ""
 echo "Registry is running at http://localhost:5001"
 echo "Test with: curl http://localhost:5001/v2/"
+echo "Delete API enabled: REGISTRY_STORAGE_DELETE_ENABLED=true"
 echo ""
 echo "Set REGISTRY_URL=<this-machine-ip>:5001 in your .env file."
