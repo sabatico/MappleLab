@@ -1,0 +1,15 @@
+# Caddy configuration for Orchard UI
+# Copy to /opt/homebrew/etc/Caddyfile (Apple Silicon) or /usr/local/etc/Caddyfile (Intel)
+# Replace 192.168.1.195 with your manager Mac's LAN IP
+# Replace 108.194.55.108 with your public IP (for external access via NAT)
+
+192.168.1.195 {
+    tls internal
+    reverse_proxy 127.0.0.1:5000
+}
+
+# External access via port forwarding (e.g. 108.194.55.108:5443 -> 192.168.1.195:443)
+108.194.55.108 {
+    tls internal
+    reverse_proxy 127.0.0.1:5000
+}
