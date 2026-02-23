@@ -84,7 +84,9 @@
                         <i class="bi bi-terminal"></i> Open Console
                     </a>
                     <a href="{{ url_for('console.download_vncloc', vm_name=vm.name) }}"
-                       class="btn btn-outline-secondary">
+                       class="btn btn-outline-secondary"
+                       download
+                       data-no-loading-overlay>
                         <i class="bi bi-download"></i> Download .vncloc
                     </a>
                     <form method="POST"
