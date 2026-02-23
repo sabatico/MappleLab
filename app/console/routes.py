@@ -69,7 +69,7 @@ def vnc(vm_name):
 
     # Ask agent to start websockify on the remote node
     try:
-        remote_port = current_app.tart.start_vnc(node, vm_name)
+        remote_port, _vnc_port = current_app.tart.start_vnc(node, vm_name)
         logger.debug("vnc() — agent started websockify on port %d", remote_port)
     except TartAPIError as e:
         logger.error("vnc() — failed to start VNC on agent: %s", e)
@@ -120,7 +120,6 @@ def vnc(vm_name):
         ws_path=f'/console/ws/{vm_name}',
         direct_ws_url=direct_ws_url,
         vnc_username=current_app.config['VNC_DEFAULT_USERNAME'],
-        vnc_password=current_app.config['VNC_DEFAULT_PASSWORD'],
     )
 
 
@@ -131,6 +130,7 @@ def disconnect(vm_name):
     logger.info("disconnect() — vm=%r user=%s", vm_name, current_user.username)
 
     current_app.tunnel_manager.stop_tunnel(vm_name)
+    current_app.direct_tcp_proxy.stop_proxy(vm_name)
     _vnc_direct_targets.pop(vm_name, None)
 
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first()
@@ -142,6 +142,53 @@ def disconnect(vm_name):
 
     flash('Console disconnected.', 'info')
     return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+
+@bp.route('/<vm_name>/vncloc')
+@login_required
+def download_vncloc(vm_name):
+    """Download a macOS Screen Sharing (.vncloc) file for direct TCP VNC."""
+    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    if vm.status != 'running':
+        flash(f'VM "{vm_name}" must be running to download a connection file.', 'warning')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+    if not vm.node:
+        flash(f'VM "{vm_name}" has no assigned node.', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    try:
+        _ws_port, vnc_port = current_app.tart.start_vnc(vm.node, vm_name)
+    except TartAPIError as e:
+        flash(f'Failed to prepare VNC endpoint: {e}', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    try:
+        proxy_port = current_app.direct_tcp_proxy.start_proxy(
+            vm_name,
+            vm.node.host,
+            vnc_port,
+        )
+    except Exception as e:
+        logger.error("download_vncloc(%s) failed to start direct proxy: %s", vm_name, e)
+        flash(f'Failed to prepare direct TCP proxy: {e}', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    manager_host = request.host.split(':', 1)[0]
+    vnc_url = f'vnc://{manager_host}:{proxy_port}'
+    vncloc_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+        '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+        '<plist version="1.0"><dict>\n'
+        f'  <key>URL</key><string>{vnc_url}</string>\n'
+        '</dict></plist>\n'
+    )
+    filename = f'{vm_name}.vncloc'
+    return current_app.response_class(
+        vncloc_xml,
+        mimetype='application/octet-stream',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 @sock.route('/console/ws/<vm_name>')

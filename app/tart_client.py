@@ -100,7 +100,11 @@ class TartClient:
 
     def start_vnc(self, node, name):
         result = self._request('POST', node, f'/vnc/{name}/start')
-        return result.get('port')
+        ws_port = result.get('port')
+        # Backwards-compatible fallback for older agents that only return
+        # websockify port and assume VM VNC on 5900.
+        vnc_port = result.get('vnc_port') or 5900
+        return ws_port, vnc_port
 
     def stop_vnc(self, node, name):
         return self._request('POST', node, f'/vnc/{name}/stop')

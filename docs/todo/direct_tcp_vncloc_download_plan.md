@@ -134,9 +134,9 @@ Options:
   - [x] socket bridge loop (`select`/`recv`/`sendall`)
 - [x] Add `VNC_DIRECT_PORT_MIN` and `VNC_DIRECT_PORT_MAX` to `config.py`.
 - [x] Initialize `app.direct_tcp_proxy` and `atexit` cleanup in `app/__init__.py`.
-- [ ] Update `app/tart_client.py` `start_vnc()` return shape to `(ws_port, vnc_port)` with fallback `5900`.
-- [ ] Add route `GET /console/<vm_name>/vncloc` in `app/console/routes.py`.
-- [ ] Add UI button in `app/templates/main/vm_detail.html`.
+- [x] Update `app/tart_client.py` `start_vnc()` return shape to `(ws_port, vnc_port)` with fallback `5900`.
+- [x] Add route `GET /console/<vm_name>/vncloc` in `app/console/routes.py`.
+- [x] Add UI button in `app/templates/main/vm_detail.html`.
 - [ ] Ensure existing browser console flow still works unchanged.
 
 ### Phase B — Local Functional Verification
