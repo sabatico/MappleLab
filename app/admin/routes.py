@@ -548,15 +548,21 @@ def settings():
         flash('Settings saved.', 'success')
         return redirect(url_for('admin.settings'))
     settings_obj = AppSettings.query.get(1)
-    usage = build_usage_by_user()
+    return render_template('admin/settings.html', settings=settings_obj)
+
+
+@bp.route('/usage')
+@login_required
+@admin_required
+def usage():
+    usage_metrics = build_usage_by_user()
     return render_template(
-        'admin/settings.html',
-        settings=settings_obj,
-        usage_by_user=usage['users'],
-        usage_generated_at=usage['generated_at'],
-        usage_running_warn_seconds=usage['running_warn_seconds'],
-        usage_vnc_warn_seconds=usage['vnc_warn_seconds'],
-        format_duration=usage['format_duration'],
+        'admin/usage.html',
+        usage_by_user=usage_metrics['users'],
+        usage_generated_at=usage_metrics['generated_at'],
+        usage_running_warn_seconds=usage_metrics['running_warn_seconds'],
+        usage_vnc_warn_seconds=usage_metrics['vnc_warn_seconds'],
+        format_duration=usage_metrics['format_duration'],
     )
 
 

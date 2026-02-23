@@ -8,178 +8,77 @@
         <h5 class="mb-0"><i class="bi bi-gear"></i> Settings</h5>
     </div>
     <div class="card-body">
-        <ul class="nav nav-tabs mb-3" id="settingsTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="smtp-tab" data-bs-toggle="tab"
-                        data-bs-target="#smtp-pane" type="button" role="tab"
-                        aria-controls="smtp-pane" aria-selected="true">
-                    SMTP
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="usage-tab" data-bs-toggle="tab"
-                        data-bs-target="#usage-pane" type="button" role="tab"
-                        aria-controls="usage-pane" aria-selected="false">
-                    Usage
-                </button>
-            </li>
-        </ul>
-
-        <div class="tab-content" id="settingsTabsContent">
-            <div class="tab-pane fade show active" id="smtp-pane" role="tabpanel" aria-labelledby="smtp-tab">
-                <h6 class="mb-3">SMTP (Invitation Emails)</h6>
-                <form method="POST" action="{{ url_for('admin.settings') }}">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label">SMTP Host</label>
-                            <input type="text" class="form-control" name="smtp_host"
-                                   value="{{ settings.smtp_host if settings else '' }}"
-                                   placeholder="smtp.company.com">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">SMTP Port</label>
-                            <input type="number" class="form-control" name="smtp_port"
-                                   value="{{ settings.smtp_port if settings else 587 }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">SMTP Username</label>
-                            <input type="text" class="form-control" name="smtp_user"
-                                   value="{{ settings.smtp_user if settings else '' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">SMTP Password</label>
-                            <input type="password" class="form-control" name="smtp_password"
-                                   value="" autocomplete="new-password"
-                                   placeholder="Optional runtime override">
-                            <div class="form-text">
-                                For secure storage, configure <code>MAIL_PASSWORD</code> in environment.
-                                This field is never persisted in the database.
-                            </div>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label">From Address</label>
-                            <input type="text" class="form-control" name="smtp_from"
-                                   value="{{ settings.smtp_from if settings else '' }}"
-                                   placeholder="orchard@company.com">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Security</label>
-                            <select class="form-select" name="smtp_security">
-                                <option value="tls"
-                                    {{ 'selected' if (settings and settings.smtp_use_tls) or not settings else '' }}>
-                                    TLS (STARTTLS)
-                                </option>
-                                <option value="ssl"
-                                    {{ 'selected' if settings and settings.smtp_use_ssl else '' }}>
-                                    SSL
-                                </option>
-                                <option value="none"
-                                    {{ 'selected' if settings and not settings.smtp_use_tls and not settings.smtp_use_ssl else '' }}>
-                                    None
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Settings
-                        </button>
-                    </div>
-                </form>
-                <hr>
-                <form method="POST" action="{{ url_for('admin.test_email') }}" class="row g-2">
-                    <div class="col-md-8">
-                        <input type="email" class="form-control" name="test_email_to"
-                               placeholder="Test recipient email" required>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-outline-info w-100">
-                            <i class="bi bi-envelope-check"></i> Send Test Email
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="tab-pane fade" id="usage-pane" role="tabpanel" aria-labelledby="usage-tab">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">VM Runtime Usage</h6>
-                    <small class="text-muted">Generated: {{ usage_generated_at }}</small>
+        <h6 class="mb-3">SMTP (Invitation Emails)</h6>
+        <form method="POST" action="{{ url_for('admin.settings') }}">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">SMTP Host</label>
+                    <input type="text" class="form-control" name="smtp_host"
+                           value="{{ settings.smtp_host if settings else '' }}"
+                           placeholder="smtp.company.com">
                 </div>
-
-                {% if usage_by_user %}
-                    {% for user_usage in usage_by_user %}
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <strong>{{ user_usage.user.username if user_usage.user else 'Unknown user' }}</strong>
-                                <span class="text-muted ms-2">{{ user_usage.vms|length }} VM(s)</span>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-striped mb-0 align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th>VM</th>
-                                                <th>Status</th>
-                                                <th>Node</th>
-                                                <th style="min-width: 360px;">Lifetime Composition</th>
-                                                <th>Durations</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for row in user_usage.vms %}
-                                                <tr>
-                                                    <td><code>{{ row.vm.name }}</code></td>
-                                                    <td>
-                                                        <span class="badge {{ 'bg-success' if row.vm.status == 'running' else 'bg-secondary' }}">
-                                                            {{ row.vm.status }}
-                                                        </span>
-                                                    </td>
-                                                    <td>{{ row.vm.node.name if row.vm.node else '—' }}</td>
-                                                    <td>
-                                                        <div class="progress mb-1" style="height: 18px;">
-                                                            <div class="progress-bar bg-secondary"
-                                                                 style="width: {{ '%.2f'|format(row.stopped_pct) }}%"
-                                                                 title="Stopped: {{ row.stopped_display }}"></div>
-                                                            <div class="progress-bar bg-danger"
-                                                                 style="width: {{ '%.2f'|format(row.running_no_vnc_pct) }}%"
-                                                                 title="Running (no VNC): {{ row.running_no_vnc_display }}"></div>
-                                                            <div class="progress-bar bg-success"
-                                                                 style="width: {{ '%.2f'|format(row.running_vnc_pct) }}%"
-                                                                 title="Running (VNC active): {{ row.running_vnc_display }}"></div>
-                                                        </div>
-                                                        <small class="text-muted">Grey: stopped · Red: running/no VNC · Green: running/VNC</small>
-                                                    </td>
-                                                    <td>
-                                                        <div><strong>Total:</strong> {{ row.lifetime_display }}</div>
-                                                        <div><span class="text-secondary">Stopped:</span> {{ row.stopped_display }}</div>
-                                                        <div>
-                                                            <span class="text-danger">Running:</span> {{ row.running_no_vnc_display }}
-                                                            {% if row.running_warn %}
-                                                                <span class="badge bg-warning text-dark ms-1">Long runtime</span>
-                                                            {% endif %}
-                                                        </div>
-                                                        <div>
-                                                            <span class="text-success">VNC active:</span> {{ row.running_vnc_display }}
-                                                            {% if row.vnc_warn %}
-                                                                <span class="badge bg-warning text-dark ms-1">Long VNC</span>
-                                                            {% endif %}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="alert alert-light border mb-0">
-                        No active/stopped VMs found on nodes.
+                <div class="col-md-4">
+                    <label class="form-label">SMTP Port</label>
+                    <input type="number" class="form-control" name="smtp_port"
+                           value="{{ settings.smtp_port if settings else 587 }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">SMTP Username</label>
+                    <input type="text" class="form-control" name="smtp_user"
+                           value="{{ settings.smtp_user if settings else '' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">SMTP Password</label>
+                    <input type="password" class="form-control" name="smtp_password"
+                           value="" autocomplete="new-password"
+                           placeholder="Optional runtime override">
+                    <div class="form-text">
+                        For secure storage, configure <code>MAIL_PASSWORD</code> in environment.
+                        This field is never persisted in the database.
                     </div>
-                {% endif %}
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">From Address</label>
+                    <input type="text" class="form-control" name="smtp_from"
+                           value="{{ settings.smtp_from if settings else '' }}"
+                           placeholder="orchard@company.com">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Security</label>
+                    <select class="form-select" name="smtp_security">
+                        <option value="tls"
+                            {{ 'selected' if (settings and settings.smtp_use_tls) or not settings else '' }}>
+                            TLS (STARTTLS)
+                        </option>
+                        <option value="ssl"
+                            {{ 'selected' if settings and settings.smtp_use_ssl else '' }}>
+                            SSL
+                        </option>
+                        <option value="none"
+                            {{ 'selected' if settings and not settings.smtp_use_tls and not settings.smtp_use_ssl else '' }}>
+                            None
+                        </option>
+                    </select>
+                </div>
             </div>
-        </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Settings
+                </button>
+            </div>
+        </form>
+        <hr>
+        <form method="POST" action="{{ url_for('admin.test_email') }}" class="row g-2">
+            <div class="col-md-8">
+                <input type="email" class="form-control" name="test_email_to"
+                       placeholder="Test recipient email" required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-info w-100">
+                    <i class="bi bi-envelope-check"></i> Send Test Email
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

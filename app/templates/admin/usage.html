@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Usage — Orchard UI{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Usage</h5>
+        <small class="text-muted">Generated: {{ usage_generated_at }}</small>
+    </div>
+    <div class="card-body">
+        {% if usage_by_user %}
+            {% for user_usage in usage_by_user %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>{{ user_usage.user.username if user_usage.user else 'Unknown user' }}</strong>
+                        <span class="text-muted ms-2">{{ user_usage.vms|length }} VM(s)</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped mb-0 align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>VM</th>
+                                        <th>Status</th>
+                                        <th>Node</th>
+                                        <th style="min-width: 360px;">Lifetime Composition</th>
+                                        <th>Durations</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in user_usage.vms %}
+                                        <tr>
+                                            <td><code>{{ row.vm.name }}</code></td>
+                                            <td>
+                                                <span class="badge {{ 'bg-success' if row.vm.status == 'running' else 'bg-secondary' }}">
+                                                    {{ row.vm.status }}
+                                                </span>
+                                            </td>
+                                            <td>{{ row.vm.node.name if row.vm.node else '—' }}</td>
+                                            <td>
+                                                <div class="progress mb-1" style="height: 18px;">
+                                                    <div class="progress-bar bg-secondary"
+                                                         style="width: {{ '%.2f'|format(row.stopped_pct) }}%"
+                                                         title="Stopped: {{ row.stopped_display }}"></div>
+                                                    <div class="progress-bar bg-danger"
+                                                         style="width: {{ '%.2f'|format(row.running_no_vnc_pct) }}%"
+                                                         title="Running (no VNC): {{ row.running_no_vnc_display }}"></div>
+                                                    <div class="progress-bar bg-success"
+                                                         style="width: {{ '%.2f'|format(row.running_vnc_pct) }}%"
+                                                         title="Running (VNC active): {{ row.running_vnc_display }}"></div>
+                                                </div>
+                                                <small class="text-muted">Grey: stopped · Red: running/no VNC · Green: running/VNC</small>
+                                            </td>
+                                            <td>
+                                                <div><strong>Total:</strong> {{ row.lifetime_display }}</div>
+                                                <div><span class="text-secondary">Stopped:</span> {{ row.stopped_display }}</div>
+                                                <div>
+                                                    <span class="text-danger">Running:</span> {{ row.running_no_vnc_display }}
+                                                    {% if row.running_warn %}
+                                                        <span class="badge bg-warning text-dark ms-1">Long runtime</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <span class="text-success">VNC active:</span> {{ row.running_vnc_display }}
+                                                    {% if row.vnc_warn %}
+                                                        <span class="badge bg-warning text-dark ms-1">Long VNC</span>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-light border mb-0">
+                No active/stopped VMs found on nodes.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
