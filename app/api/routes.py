@@ -170,6 +170,7 @@ def _op_stage_label(op_status):
         'pushing': 'Saving to registry',
         'deleting': 'Cleaning local VM',
         'pulling': 'Downloading VM from registry',
+        'cloning': 'Finalizing local VM image',
         'starting': 'Starting VM',
     }
     return labels.get((op_status or '').strip().lower(), (op_status or 'Working').title())

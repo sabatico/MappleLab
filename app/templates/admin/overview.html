@@ -67,6 +67,8 @@
                                 {% if op.progress_pct is not none %} — {{ op.progress_pct }}%{% endif %}
                                 {% if op.transferred_gb is not none and op.total_gb is not none and op.total_gb > 0 %}
                                 <br>{{ '%.1f'|format(op.transferred_gb) }} / {{ '%.1f'|format(op.total_gb) }} GB
+                                {% elif op.last_progress_line %}
+                                <br>{{ op.last_progress_line }}
                                 {% endif %}
                             </div>
                             {% else %}

@@ -26,6 +26,7 @@ def _op_stage_label(op_status):
         'pushing': 'Saving to registry',
         'deleting': 'Cleaning local VM',
         'pulling': 'Downloading VM from registry',
+        'cloning': 'Finalizing local VM image',
         'starting': 'Starting VM',
         'done': 'Completed',
         'error': 'Failed',
@@ -117,6 +118,7 @@ def overview():
                 'progress_pct': op.get('progress_pct'),
                 'transferred_gb': op.get('transferred_gb'),
                 'total_gb': op.get('total_gb'),
+                'last_progress_line': op.get('last_progress_line'),
             }
         except TartAPIError:
             op_snapshots[vm.id] = {'stage': 'Node unreachable'}

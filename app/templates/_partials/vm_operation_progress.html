@@ -7,10 +7,13 @@
 {% set transferred = op.get('transferred_gb') if op else None %}
 {% set total = op.get('total_gb') if op else None %}
 {% set percent = op.get('progress_pct') if op else None %}
+{% set last_line = op.get('last_progress_line') if op else None %}
 {% if transferred is not none and total is not none and total > 0 %}
 {% set overlay_detail = ('%.1f'|format(transferred)) ~ ' / ' ~ ('%.1f'|format(total)) ~ ' GB transferred' ~ (' (' ~ percent ~ '%)' if percent is not none else '') %}
 {% elif percent is not none %}
 {% set overlay_detail = percent ~ '% complete' %}
+{% elif last_line %}
+{% set overlay_detail = last_line %}
 {% else %}
 {% set overlay_detail = 'Progress details are being collected from the node agent.' %}
 {% endif %}
@@ -39,6 +42,8 @@
         </div>
         {% elif percent is not none %}
         <div class="small mt-1">{{ percent }}% complete</div>
+        {% elif last_line %}
+        <div class="small mt-1">{{ last_line }}</div>
         {% else %}
         <div class="small mt-1">Progress details are being collected from the node agent.</div>
         {% endif %}
