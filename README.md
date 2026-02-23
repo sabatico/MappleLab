@@ -349,6 +349,25 @@ bash scripts/setup_registry.sh
 curl http://localhost:5001/v2/
 ```
 
+Operational defaults used by the setup script:
+
+- Registry data path: `/Users/Shared/tart-registry` (stable absolute mount)
+- Delete API enabled: `REGISTRY_STORAGE_DELETE_ENABLED=true`
+
+If you need to recreate the container while preserving existing images, keep the same host path mount:
+
+```bash
+docker stop tart-registry || true
+docker rm tart-registry || true
+docker run -d \
+  -p 5001:5000 \
+  -v /Users/Shared/tart-registry:/var/lib/registry \
+  -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+  --restart always \
+  --name tart-registry \
+  registry:2
+```
+
 Set `REGISTRY_URL` in your `.env` (both formats are accepted):
 - `<this-machine-ip>:5001`
 - `http://<this-machine-ip>:5001/v2/`
@@ -440,11 +459,35 @@ What to do:
 - use `Retry Cleanup` from admin dashboard row
 - verify manager can reach registry endpoint from `REGISTRY_URL`
 - check manager logs for entries starting with `registry_cleanup`
+- ensure registry container was started with `REGISTRY_STORAGE_DELETE_ENABLED=true`
+- ensure registry container mounts the expected persistent path (`/Users/Shared/tart-registry`)
 
 Expected behavior:
 
 - VM stays in its successful state (`running`, `archived`, or deleted)
 - only cleanup metadata indicates warning/failure until retry succeeds
+
+### Registry Storage page looks empty after registry recreate
+
+Symptom:
+
+- Admin `Registry Storage` shows no artefacts and full free capacity.
+
+Most common cause:
+
+- registry container was recreated with a different host mount path.
+
+Check:
+
+```bash
+docker inspect tart-registry --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+curl http://localhost:5001/v2/_catalog
+```
+
+Fix:
+
+- recreate container with the original path mount:
+  `/Users/Shared/tart-registry:/var/lib/registry`
 
 ---
 

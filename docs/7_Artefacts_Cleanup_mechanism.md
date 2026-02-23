@@ -132,6 +132,9 @@ These fields are operational metadata only.
   - do **not** rollback successful VM operation
   - mark cleanup as warning/failed
   - allow manual retry from admin tooling
+- Runtime prerequisite: Docker registry must run with delete enabled
+  (`REGISTRY_STORAGE_DELETE_ENABLED=true`) and a stable persistent mount
+  (`/Users/Shared/tart-registry`) for consistent artefact visibility.
 - If digest resolution fails due to missing tag:
   - treat as idempotent success (already cleaned)
 - If network to registry fails:

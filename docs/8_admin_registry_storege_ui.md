@@ -104,6 +104,8 @@ flowchart TD
 - Size is estimated from manifest payload sizes (`config + layers/manifests`).
 - If digest is unavailable for an orphan item, row cannot be deleted from UI (digest required).
 - This version focuses on manual operations and observability; no background orphan sweeps.
+- Registry delete requires Docker registry delete API enabled (`REGISTRY_STORAGE_DELETE_ENABLED=true`).
+- Persistent mount path should stay stable as `/Users/Shared/tart-registry` to avoid “empty inventory after recreate”.
 
 ---
 
