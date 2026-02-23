@@ -29,7 +29,13 @@ def _ensure_sqlite_columns(app):
         ('invited_at', 'DATETIME'),
         ('last_login_at', 'DATETIME'),
     ]
-    vm_additions = [('disk_size_gb', 'FLOAT')]
+    vm_additions = [
+        ('disk_size_gb', 'FLOAT'),
+        ('cleanup_status', 'VARCHAR(32)'),
+        ('cleanup_last_error', 'VARCHAR(256)'),
+        ('cleanup_last_run_at', 'DATETIME'),
+        ('cleanup_target_digest', 'VARCHAR(128)'),
+    ]
     app_settings_additions = [('smtp_use_ssl', 'BOOLEAN DEFAULT 0')]
 
     with db.engine.begin() as conn:

@@ -5,6 +5,7 @@ from flask_login import login_required, current_user
 from app.api import bp
 from app.extensions import db
 from app.models import VM, Node
+from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 
 logger = logging.getLogger(__name__)
@@ -154,6 +155,7 @@ def _advance_async_op(vm):
             vm.status = 'running'
             vm.last_started_at = datetime.utcnow()
             vm.status_detail = None
+            cleanup_vm_registry_tag(vm, operation='restore_success')
         return True
 
     if op.get('status') == 'error':

@@ -52,6 +52,21 @@
                         <td class="text-danger small">{{ vm.status_detail }}</td>
                     </tr>
                     {% endif %}
+                    {% if vm.cleanup_status %}
+                    <tr>
+                        <th>Cleanup</th>
+                        <td>
+                            {% if vm.cleanup_status == 'done' %}
+                            <span class="badge bg-success">Done</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ vm.cleanup_status|capitalize }}</span>
+                            {% endif %}
+                            {% if vm.cleanup_last_error %}
+                            <div class="small text-danger mt-1">{{ vm.cleanup_last_error }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
                 </table>
 
                 {# Long-operation progress indicator (live-updated every 5s) #}

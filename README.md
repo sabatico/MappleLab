@@ -15,9 +15,13 @@ A Flask web dashboard for managing TART virtual machines across multiple Mac nod
 - Recover failed VMs by starting them again from UI
 - **Save & Shutdown** — push VM disk to local Docker registry, free the Mac node
 - **Resume** — pull VM from registry, start on any available Mac node
+- VM detail progress panel for save/resume/re-pull/migrate (stage, %, transferred GB, and latest raw Tart line)
+- Global loading overlay mirrors current operation stage/progress while async actions are running
 - In-browser VNC console via noVNC (direct WS on LAN, SSH tunnel for WAN)
 - Live VNC profile switch (`Optimize Bandwidth` / `Optimize Render`) in console toolbar
 - Admin node management UI (add/remove Mac nodes)
+- Admin **Dashboard** (cross-user operational view) with status-aware VM actions
+- Admin **My VMs** tab preserved for personal VM view (same as non-admin users)
 - HTMX auto-refresh dashboard
 
 VM states shown in UI: `creating`, `running`, `stopped`, `pushing`, `archived`, `pulling`, `failed`.
@@ -25,6 +29,7 @@ Dashboard polling reconciles DB VM status with each node agent's VM list to avoi
 Delete operations are defensive: manager stops VNC + VM first, then deletes, to handle Tart's "running VM delete appears as not found" behavior.
 Save/migrate actions perform a fast preflight against registry-backed free space and fail early when capacity is insufficient.
 Save quota enforcement uses archived VM sizes from SQL plus current VM `SizeOnDisk` from the node before starting save.
+Registry repository segments are sanitized before Tart push/pull (safe with email-like usernames).
 
 ## Architecture
 
@@ -346,6 +351,51 @@ curl http://localhost:5001/v2/
 Set `REGISTRY_URL` in your `.env` (both formats are accepted):
 - `<this-machine-ip>:5001`
 - `http://<this-machine-ip>:5001/v2/`
+
+---
+
+## VM UI Behavior (latest)
+
+- Navbar naming:
+  - All users see `My VMs`
+  - Admins also see `Dashboard` (cross-user operations)
+- Admin dashboard includes `running`, `stopped`, `archived`, `pushing`, `pulling`, and `failed` rows.
+- Admin dashboard actions are status-aware (`Start`, `Stop`, `Archive`, `Resume`, `Re-Pull`, `Delete`).
+- In-progress rows include a one-time progress snapshot (stage/percent/transfer) at page render.
+- VM details page polls live operation data every 5s and shows:
+  - stage label
+  - percent
+  - transferred/total GB (when available)
+  - latest raw Tart line (for example `waiting for lock...`)
+
+---
+
+## Troubleshooting
+
+### Re-pull stuck at `waiting for lock...`
+
+Symptom in node logs:
+
+- `pulling manifest...`
+- `waiting for lock...`
+
+Cause:
+
+- orphaned `tart pull` processes from earlier failed/abandoned attempts keep Tart's image lock.
+
+Fix:
+
+- update node agent to include stale-pull cleanup before each new pull (`tart_runner.pull_vm` now terminates old matching `tart pull` processes for the same tag).
+- if needed before upgrade, manually terminate stale pulls on node:
+
+```bash
+ps -ax | rg "tart pull"
+kill <pid>
+```
+
+Additional note:
+
+- operation progress now exposes the latest raw Tart line in UI and overlay, so lock waits are visible immediately.
 
 ---
 

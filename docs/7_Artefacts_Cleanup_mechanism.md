@@ -1,6 +1,6 @@
 # 7. Artefacts Cleanup Mechanism
 
-> **Status**: Proposed  
+> **Status**: In progress (phase 1/2 implemented)  
 > **Goal**: Ensure VM artefacts are cleaned consistently on nodes and in Docker registry after successful lifecycle operations.
 
 ---
@@ -31,6 +31,12 @@ Cleanup is required after **successful**:
 - UI state and local node state can be cleaned, but registry artefacts may remain.
 - Repeated retries/migrations can accumulate stale registry blobs/tags.
 - Failure recovery paths can leave mixed state (node + registry + DB not aligned).
+
+Related operational finding already addressed in node agent:
+
+- Re-pull lock contention was caused by orphaned `tart pull` processes holding Tart locks.
+- Node agent now logs active Tart processes on lock waits and terminates stale matching pulls before new pull attempts.
+- This is complementary to this plan: it addresses pull execution stability, while this document focuses on post-success artefact cleanup guarantees.
 
 ---
 
@@ -165,34 +171,34 @@ Use this checklist as the execution plan for implementation PRs.
 
 ### A. Manager: Registry cleanup service
 
-- [ ] Create `app/registry_cleanup.py`
-- [ ] Implement `parse_registry_tag(registry_tag)` -> `host`, `repo`, `tag`
-- [ ] Implement `resolve_manifest_digest(registry_tag)` using `HEAD/GET /v2/<repo>/manifests/<tag>`
-- [ ] Implement `delete_manifest(host, repo, digest)` using `DELETE /v2/<repo>/manifests/<digest>`
-- [ ] Implement `cleanup_tag(registry_tag)` with structured result `{ok, digest, status_code, error}`
+- [x] Create `app/registry_cleanup.py`
+- [x] Implement `parse_registry_tag(registry_tag)` -> `host`, `repo`, `tag`
+- [x] Implement `resolve_manifest_digest(registry_tag)` using `HEAD/GET /v2/<repo>/manifests/<tag>`
+- [x] Implement `delete_manifest(host, repo, digest)` using `DELETE /v2/<repo>/manifests/<digest>`
+- [x] Implement `cleanup_tag(registry_tag)` with structured result `{ok, digest, status_code, error}`
 - [ ] Add retry/backoff policy and request timeouts
-- [ ] Add idempotent handling for missing tags/manifests
+- [x] Add idempotent handling for missing tags/manifests
 - [ ] Add unit tests for parser + digest resolution + delete responses
 
 ### B. Manager: Hook cleanup into VM state transitions
 
-- [ ] `app/api/routes.py`: after `pulling -> running` (resume/re-pull), schedule `cleanup_tag(vm.registry_tag)`
-- [ ] `app/api/routes.py`: after migration target `running`, schedule cleanup of migration transfer tag
-- [ ] `app/main/routes.py`: on successful delete of archived VM, invoke cleanup before DB row removal (or mark deferred cleanup if async)
+- [x] `app/api/routes.py`: after `pulling -> running` (resume/re-pull), schedule `cleanup_tag(vm.registry_tag)`
+- [x] `app/api/routes.py`: after migration target `running`, schedule cleanup of migration transfer tag
+- [x] `app/main/routes.py`: on successful delete of archived VM, invoke cleanup before DB row removal (or mark deferred cleanup if async)
 - [ ] Ensure cleanup failure does not rollback successful VM start/migration/delete
-- [ ] Add structured log entries with VM name, operation type, registry tag, digest, cleanup result
+- [x] Add structured log entries with VM name, operation type, registry tag, digest, cleanup result
 
 ### C. Manager: Data model and visibility
 
-- [ ] Add DB fields (or equivalent table): `cleanup_status`, `cleanup_last_error`, `cleanup_last_run_at`, `cleanup_target_digest`
-- [ ] Update migration files for schema changes
-- [ ] Update admin dashboard to show cleanup warning/failure indicators
-- [ ] Add optional VM detail message: “Registry artefact cleanup scheduled/completed/failed”
+- [x] Add DB fields (or equivalent table): `cleanup_status`, `cleanup_last_error`, `cleanup_last_run_at`, `cleanup_target_digest`
+- [x] Update migration files for schema changes
+- [x] Update admin dashboard to show cleanup warning/failure indicators
+- [x] Add optional VM detail message: “Registry artefact cleanup scheduled/completed/failed”
 
 ### D. Manager: Admin controls
 
-- [ ] Add admin endpoint for manual cleanup retry (e.g. `POST /admin/vms/<id>/cleanup-retry`)
-- [ ] Add admin button/action in dashboard row for failed cleanup retries
+- [x] Add admin endpoint for manual cleanup retry (e.g. `POST /admin/vms/<id>/cleanup-retry`)
+- [x] Add admin button/action in dashboard row for failed cleanup retries
 - [ ] Add server-side guardrails to avoid duplicate concurrent retries
 
 ### E. Node cleanup verification (safety checks)

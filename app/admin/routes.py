@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.admin import bp
 from app.extensions import db, bcrypt
 from app.models import User, VM, AppSettings
+from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 from app.utils import admin_required
 from app.email import send_invite_email, send_test_email
@@ -349,9 +350,37 @@ def delete_vm(vm_id):
             flash(f'Failed to delete VM "{vm.name}" on node: {e}', 'danger')
             return _redirect_overview()
 
+    cleanup_result = cleanup_vm_registry_tag(vm, operation='admin_delete_vm')
+    if not cleanup_result.get('ok'):
+        flash(
+            f'VM "{vm.name}" deleted locally, but registry cleanup failed. Check logs and retry cleanup later.',
+            'warning',
+        )
+
     db.session.delete(vm)
     db.session.commit()
     flash(f'VM "{vm.name}" deleted.', 'success')
+    return _redirect_overview()
+
+
+@bp.route('/vms/<int:vm_id>/cleanup-retry', methods=['POST'])
+@login_required
+@admin_required
+def cleanup_retry(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    if not vm.registry_tag:
+        flash(f'VM "{vm.name}" has no registry tag to clean up.', 'warning')
+        return _redirect_overview()
+
+    result = cleanup_vm_registry_tag(vm, operation='admin_cleanup_retry')
+    db.session.commit()
+    if result.get('ok'):
+        flash(f'Cleanup retry succeeded for "{vm.name}".', 'success')
+    else:
+        flash(
+            f'Cleanup retry failed for "{vm.name}": {vm.cleanup_last_error or "Unknown error"}',
+            'warning',
+        )
     return _redirect_overview()
 
 

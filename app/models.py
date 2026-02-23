@@ -67,6 +67,10 @@ class VM(db.Model):
     last_saved_at = db.Column(db.DateTime, nullable=True)
     last_started_at = db.Column(db.DateTime, nullable=True)
     status_detail = db.Column(db.String(256), nullable=True)  # error messages, progress info
+    cleanup_status = db.Column(db.String(32), nullable=True)  # pending|done|warning|failed
+    cleanup_last_error = db.Column(db.String(256), nullable=True)
+    cleanup_last_run_at = db.Column(db.DateTime, nullable=True)
+    cleanup_target_digest = db.Column(db.String(128), nullable=True)
 
 
 class AppSettings(db.Model):

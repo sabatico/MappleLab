@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from app.main import bp
 from app.extensions import db
 from app.models import VM, Node
+from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 
 logger = logging.getLogger(__name__)
@@ -771,6 +772,14 @@ def delete_vm(vm_name):
                 'danger'
             )
             return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    cleanup_result = cleanup_vm_registry_tag(vm, operation='delete_vm')
+    if not cleanup_result.get('ok'):
+        flash(
+            'VM was deleted locally, but registry artefact cleanup failed. '
+            'Check logs and run cleanup retry later.',
+            'warning',
+        )
 
     db.session.delete(vm)
     db.session.commit()

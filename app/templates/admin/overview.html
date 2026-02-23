@@ -38,6 +38,7 @@
                     <th>RAM</th>
                     <th>CPU</th>
                     <th>Disk</th>
+                    <th>Cleanup</th>
                     <th>Progress Snapshot</th>
                     <th style="width: 380px;">Actions</th>
                 </tr>
@@ -59,6 +60,18 @@
                         <td>{{ vm.memory_mb ~ ' MB' if vm.memory_mb else '—' }}</td>
                         <td>{{ vm.cpu if vm.cpu else '—' }}</td>
                         <td>{{ '%.1f GB'|format(vm.disk_size_gb) if vm.disk_size_gb else '—' }}</td>
+                        <td>
+                            {% if vm.cleanup_status == 'done' %}
+                            <span class="badge bg-success">Done</span>
+                            {% elif vm.cleanup_status in ('warning', 'failed') %}
+                            <span class="badge bg-warning text-dark">Warning</span>
+                            {% if vm.cleanup_last_error %}
+                            <div class="small text-danger mt-1">{{ vm.cleanup_last_error }}</div>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% set op = op_snapshots.get(vm.id) %}
                             {% if op %}
@@ -109,6 +122,11 @@
                             </form>
                             {% endif %}
                             {% endif %}
+                            {% if vm.cleanup_status in ('warning', 'failed') and vm.registry_tag %}
+                            <form method="POST" action="{{ url_for('admin.cleanup_retry', vm_id=vm.id) }}" style="display:inline-block;">
+                                <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat"></i> Retry Cleanup</button>
+                            </form>
+                            {% endif %}
                             <form method="POST" action="{{ url_for('admin.delete_vm', vm_id=vm.id) }}"
                                   style="display:inline-block;"
                                   onsubmit="return confirm('Delete VM \'{{ vm.name }}\'?')">
@@ -120,7 +138,7 @@
                 {% endfor %}
                 {% if not ns.has_rows %}
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-3">No VM records for this user.</td>
+                    <td colspan="9" class="text-center text-muted py-3">No VM records for this user.</td>
                 </tr>
                 {% endif %}
             </tbody>
