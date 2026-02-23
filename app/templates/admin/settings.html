@@ -40,15 +40,22 @@
                                    value="{{ settings.smtp_from if settings else '' }}"
                                    placeholder="orchard@company.com">
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="smtp_use_tls"
-                                       name="smtp_use_tls"
-                                       {{ 'checked' if (settings and settings.smtp_use_tls) or not settings else '' }}>
-                                <label class="form-check-label" for="smtp_use_tls">
-                                    Use TLS (STARTTLS)
-                                </label>
-                            </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Security</label>
+                            <select class="form-select" name="smtp_security">
+                                <option value="tls"
+                                    {{ 'selected' if (settings and settings.smtp_use_tls) or not settings else '' }}>
+                                    TLS (STARTTLS)
+                                </option>
+                                <option value="ssl"
+                                    {{ 'selected' if settings and settings.smtp_use_ssl else '' }}>
+                                    SSL
+                                </option>
+                                <option value="none"
+                                    {{ 'selected' if settings and not settings.smtp_use_tls and not settings.smtp_use_ssl else '' }}>
+                                    None
+                                </option>
+                            </select>
                         </div>
                     </div>
                     <div class="mt-4">

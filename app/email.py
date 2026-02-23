@@ -15,10 +15,12 @@ def _smtp_settings():
 
 
 def _apply_mail_config(settings):
+    use_ssl = bool(getattr(settings, 'smtp_use_ssl', False))
+    use_tls = bool(settings.smtp_use_tls) and not use_ssl
     current_app.config['MAIL_SERVER'] = settings.smtp_host or ''
     current_app.config['MAIL_PORT'] = settings.smtp_port or 587
-    current_app.config['MAIL_USE_TLS'] = bool(settings.smtp_use_tls)
-    current_app.config['MAIL_USE_SSL'] = False
+    current_app.config['MAIL_USE_TLS'] = use_tls
+    current_app.config['MAIL_USE_SSL'] = use_ssl
     current_app.config['MAIL_USERNAME'] = settings.smtp_user or ''
     current_app.config['MAIL_PASSWORD'] = settings.smtp_password or ''
     current_app.config['MAIL_DEFAULT_SENDER'] = settings.smtp_from or settings.smtp_user or ''

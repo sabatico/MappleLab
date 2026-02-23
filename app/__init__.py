@@ -17,6 +17,7 @@ def _ensure_sqlite_columns(app):
     inspector = inspect(db.engine)
     users_cols = {col['name'] for col in inspector.get_columns('users')}
     vms_cols = {col['name'] for col in inspector.get_columns('vms')}
+    app_settings_cols = {col['name'] for col in inspector.get_columns('app_settings')}
 
     user_additions = [
         ('email', 'VARCHAR(255)'),
@@ -29,6 +30,7 @@ def _ensure_sqlite_columns(app):
         ('last_login_at', 'DATETIME'),
     ]
     vm_additions = [('disk_size_gb', 'FLOAT')]
+    app_settings_additions = [('smtp_use_ssl', 'BOOLEAN DEFAULT 0')]
 
     with db.engine.begin() as conn:
         for name, ddl in user_additions:
@@ -39,6 +41,10 @@ def _ensure_sqlite_columns(app):
             if name not in vms_cols:
                 conn.execute(text(f'ALTER TABLE vms ADD COLUMN {name} {ddl}'))
                 logger.info("SQLite compatibility: added vms.%s", name)
+        for name, ddl in app_settings_additions:
+            if name not in app_settings_cols:
+                conn.execute(text(f'ALTER TABLE app_settings ADD COLUMN {name} {ddl}'))
+                logger.info("SQLite compatibility: added app_settings.%s", name)
 
 
 def create_app(config_class=None):

@@ -78,3 +78,4 @@ class AppSettings(db.Model):
     smtp_password = db.Column(db.String(256), nullable=True)
     smtp_from = db.Column(db.String(256), nullable=True)
     smtp_use_tls = db.Column(db.Boolean, default=True, nullable=False)
+    smtp_use_ssl = db.Column(db.Boolean, default=False, nullable=False)

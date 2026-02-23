@@ -32,7 +32,16 @@ def _upsert_settings_from_form():
     settings.smtp_user = request.form.get('smtp_user', '').strip() or None
     settings.smtp_password = request.form.get('smtp_password', '').strip() or None
     settings.smtp_from = request.form.get('smtp_from', '').strip() or None
-    settings.smtp_use_tls = bool(request.form.get('smtp_use_tls'))
+    security_mode = request.form.get('smtp_security', 'tls').strip().lower()
+    if security_mode == 'ssl':
+        settings.smtp_use_ssl = True
+        settings.smtp_use_tls = False
+    elif security_mode == 'none':
+        settings.smtp_use_ssl = False
+        settings.smtp_use_tls = False
+    else:
+        settings.smtp_use_ssl = False
+        settings.smtp_use_tls = True
     return settings
 
 
