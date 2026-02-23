@@ -21,7 +21,10 @@
             </div>
             <div class="card-body">
                 <table class="table table-sm">
-                    <tr><th>Image</th><td>{{ vm.base_image | default('—') }}</td></tr>
+                    <tr>
+                        <th>Image</th>
+                        <td><small class="text-muted">{{ vm.base_image | default('—') }}</small></td>
+                    </tr>
                     <tr><th>Node</th><td>{{ vm.node.name if vm.node else '—' }}</td></tr>
                     <tr>
                         <th>IP Address</th>
@@ -63,7 +66,7 @@
                 </div>
                 {% endif %}
 
-                <div class="d-flex gap-2 flex-wrap mt-2">
+                <div class="d-flex gap-1 flex-wrap mt-2 vm-detail-actions">
                     {# Running: Console + Stop + Save & Shutdown #}
                     {% if vm.status == 'running' %}
                     <a href="{{ url_for('console.vnc', vm_name=vm.name) }}"

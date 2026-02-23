@@ -10,10 +10,12 @@
             {{ vm.name }}
         </a>
     </td>
-    <td>
-        <small class="text-muted">{{ vm.base_image | default('—') }}</small>
+    <td class="vm-image-cell">
+        <small class="text-muted" title="{{ vm.base_image | default('—') }}">
+            {{ vm.base_image | default('—') }}
+        </small>
     </td>
-    <td>
+    <td class="vm-actions-col">
         {% include '_partials/vm_status_badge.html' %}
         {% if vm.status == 'failed' and vm.status_detail %}
         <div class="small text-danger mt-1" title="{{ vm.status_detail }}">

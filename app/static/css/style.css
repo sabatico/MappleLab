@@ -42,3 +42,25 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Keep VM table rows compact and action buttons on one line more often. */
+.table-vms .vm-image-cell small {
+    display: block;
+    max-width: 340px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table-vms .vm-actions-col .btn,
+.vm-detail-actions .btn {
+    font-size: 0.76rem;
+    padding: 0.18rem 0.45rem;
+}
+
+.table-vms .vm-actions-col form,
+.vm-detail-actions form {
+    margin-bottom: 0;
+}
