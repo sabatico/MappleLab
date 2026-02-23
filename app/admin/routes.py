@@ -13,6 +13,7 @@ from app.tart_client import TartAPIError
 from app.utils import admin_required
 from app.email import send_invite_email, send_test_email
 from app.usage_events import ensure_vm_status_baseline, set_vm_status
+from app.admin.usage_metrics import build_usage_by_user
 from app.main.routes import (
     _sanitize_registry_tag,
     _check_registry_space_for_save,
@@ -547,7 +548,16 @@ def settings():
         flash('Settings saved.', 'success')
         return redirect(url_for('admin.settings'))
     settings_obj = AppSettings.query.get(1)
-    return render_template('admin/settings.html', settings=settings_obj)
+    usage = build_usage_by_user()
+    return render_template(
+        'admin/settings.html',
+        settings=settings_obj,
+        usage_by_user=usage['users'],
+        usage_generated_at=usage['generated_at'],
+        usage_running_warn_seconds=usage['running_warn_seconds'],
+        usage_vnc_warn_seconds=usage['vnc_warn_seconds'],
+        format_duration=usage['format_duration'],
+    )
 
 
 @bp.route('/settings/test-email', methods=['POST'])
