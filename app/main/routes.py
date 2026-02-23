@@ -496,6 +496,40 @@ def resume_vm(vm_name):
     return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
 
+@bp.route('/vms/<vm_name>/repull', methods=['POST'])
+@login_required
+def repull_vm(vm_name):
+    """
+    Retry pull/restore for failed migrations/resumes on the currently assigned node.
+    """
+    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    if vm.status != 'failed':
+        flash(f'VM is not in failed state (status: {vm.status}).', 'warning')
+        return _redirect_after_action(vm_name)
+    if not vm.node:
+        flash('VM has no assigned node for re-pull.', 'warning')
+        return _redirect_after_action(vm_name)
+    if not vm.registry_tag:
+        flash('VM has no registry tag; cannot re-pull.', 'danger')
+        return _redirect_after_action(vm_name)
+
+    try:
+        registry_tag = _sanitize_registry_tag(vm.registry_tag)
+        if registry_tag != vm.registry_tag:
+            vm.registry_tag = registry_tag
+        current_app.tart.restore_vm(vm.node, vm_name, registry_tag)
+        vm.status = 'pulling'
+        vm.status_detail = None
+        db.session.commit()
+        logger.info("repull_vm() — %r pulling from registry onto node %s", vm_name, vm.node.name)
+        flash(f'Re-pull started for VM "{vm_name}" on "{vm.node.name}".', 'info')
+    except TartAPIError as e:
+        logger.error("repull_vm() — failed: %s", e)
+        flash(f'Re-pull failed: {e}', 'danger')
+
+    return _redirect_after_action(vm_name)
+
+
 @bp.route('/vms/<vm_name>/start', methods=['POST'])
 @login_required
 def start_vm(vm_name):

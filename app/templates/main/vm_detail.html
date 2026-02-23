@@ -96,6 +96,17 @@
                     </form>
                     {% endif %}
 
+                    {# Failed pull/restore: retry pulling from registry onto current node #}
+                    {% if vm.status == 'failed' and vm.node and vm.registry_tag %}
+                    <form method="POST"
+                          action="{{ url_for('main.repull_vm', vm_name=vm.name) }}"
+                          onsubmit="return confirm('Retry pull for VM \'{{ vm.name }}\' on {{ vm.node.name }}?')">
+                        <button class="btn btn-outline-warning">
+                            <i class="bi bi-cloud-download"></i> Re-Pull
+                        </button>
+                    </form>
+                    {% endif %}
+
                     {# Stopped: Save to registry without shutdown step #}
                     {% if vm.status == 'stopped' %}
                     <form method="POST"

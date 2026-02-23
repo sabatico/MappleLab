@@ -98,6 +98,17 @@
             <i class="bi bi-exclamation-triangle"></i> Error
         </span>
         {% if vm.node %}
+        {% if vm.registry_tag %}
+        <form method="POST"
+              action="{{ url_for('main.repull_vm', vm_name=vm.name) }}"
+              style="display: inline-block;"
+              onsubmit="return confirm('Retry pull for VM \'{{ vm.name }}\' on {{ vm.node.name }}?')">
+            <button type="submit" class="btn btn-sm btn-outline-warning me-1"
+                    title="Retry pull from registry onto current node">
+                <i class="bi bi-cloud-download"></i> Re-Pull
+            </button>
+        </form>
+        {% endif %}
         <form method="POST"
               action="{{ url_for('main.start_vm', vm_name=vm.name) }}"
               style="display: inline-block;">
