@@ -2,6 +2,27 @@
 
 {% block title %}Usage — Orchard UI{% endblock %}
 
+{% block head %}
+<style>
+.usage-table {
+    table-layout: fixed;
+}
+.usage-table .col-vm { width: 70px; }
+.usage-table .col-status { width: 70px; }
+.usage-table .col-name { width: 100px; }
+.usage-table .col-composition { width: 1%; }  /* takes remaining space */
+.usage-table .col-durations { width: 120px; }
+.usage-table td:nth-child(1),
+.usage-table th:nth-child(1),
+.usage-table td:nth-child(3),
+.usage-table th:nth-child(3) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -19,14 +40,14 @@
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-sm table-striped mb-0 align-middle">
+                            <table class="table table-sm table-striped mb-0 align-middle usage-table">
                                 <thead>
                                     <tr>
-                                        <th>VM</th>
-                                        <th>Status</th>
-                                        <th>Node</th>
-                                        <th style="min-width: 360px;">Lifetime Composition</th>
-                                        <th>Durations</th>
+                                        <th class="col-vm">VM</th>
+                                        <th class="col-status">Status</th>
+                                        <th class="col-name">Node</th>
+                                        <th class="col-composition">Lifetime Composition</th>
+                                        <th class="col-durations">Durations</th>
                                     </tr>
                                 </thead>
                                 <tbody>
