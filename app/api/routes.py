@@ -71,6 +71,22 @@ def _parse_migration_target(status_detail):
         return None
 
 
+def _normalize_async_error(raw_error):
+    """
+    Convert verbose agent/tart errors into concise UI-friendly failure text.
+    """
+    text = (raw_error or 'Unknown error').strip()
+    lowered = text.lower()
+    if 'no space left on device' in lowered:
+        return (
+            'Registry storage is full (no space left on device). '
+            'Free space in the registry data volume and retry.'
+        )
+    if len(text) > 220:
+        text = f'{text[:217]}...'
+    return text
+
+
 def _advance_async_op(vm):
     """
     Progress VM async operations (pushing/pulling) from agent op status.
@@ -80,6 +96,14 @@ def _advance_async_op(vm):
         return False
 
     op = current_app.tart.get_op_status(vm.node, vm.name)
+    if op.get('status') == 'idle':
+        vm.status = 'failed'
+        vm.status_detail = (
+            'Operation state was lost on the node agent (reported idle). '
+            'Please retry save/resume/migrate.'
+        )
+        return True
+
     if op.get('status') == 'done':
         if vm.status == 'pushing':
             target_node_id = _parse_migration_target(vm.status_detail)
@@ -112,7 +136,7 @@ def _advance_async_op(vm):
 
     if op.get('status') == 'error':
         vm.status = 'failed'
-        vm.status_detail = op.get('error', 'Unknown error')
+        vm.status_detail = _normalize_async_error(op.get('error', 'Unknown error'))
         return True
 
     return False

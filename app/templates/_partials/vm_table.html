@@ -15,6 +15,11 @@
     </td>
     <td>
         {% include '_partials/vm_status_badge.html' %}
+        {% if vm.status == 'failed' and vm.status_detail %}
+        <div class="small text-danger mt-1" title="{{ vm.status_detail }}">
+            {{ vm.status_detail }}
+        </div>
+        {% endif %}
     </td>
     <td>{{ vm.node.name if vm.node else '—' }}</td>
     <td>
