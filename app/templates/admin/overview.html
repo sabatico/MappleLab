@@ -23,7 +23,9 @@
             Running: {{ grouped[user.id]['running']|length }} |
             Stopped: {{ grouped[user.id]['stopped']|length }} |
             Archived: {{ grouped[user.id]['archived']|length }} |
-            Failed: {{ grouped[user.id]['failed']|length }}
+            Failed: {{ grouped[user.id]['failed']|length }} |
+            Saving: {{ grouped[user.id]['pushing']|length }} |
+            Resuming: {{ grouped[user.id]['pulling']|length }}
         </small>
     </div>
     <div class="card-body p-0">
@@ -36,6 +38,7 @@
                     <th>RAM</th>
                     <th>CPU</th>
                     <th>Disk</th>
+                    <th>Progress Snapshot</th>
                     <th style="width: 380px;">Actions</th>
                 </tr>
             </thead>
@@ -57,6 +60,20 @@
                         <td>{{ vm.cpu if vm.cpu else '—' }}</td>
                         <td>{{ '%.1f GB'|format(vm.disk_size_gb) if vm.disk_size_gb else '—' }}</td>
                         <td>
+                            {% set op = op_snapshots.get(vm.id) %}
+                            {% if op %}
+                            <div class="small">
+                                {{ op.stage }}
+                                {% if op.progress_pct is not none %} — {{ op.progress_pct }}%{% endif %}
+                                {% if op.transferred_gb is not none and op.total_gb is not none and op.total_gb > 0 %}
+                                <br>{{ '%.1f'|format(op.transferred_gb) }} / {{ '%.1f'|format(op.total_gb) }} GB
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if vm.status == 'running' %}
                             <form method="POST" action="{{ url_for('admin.stop_vm', vm_id=vm.id) }}" style="display:inline-block;">
                                 <button class="btn btn-sm btn-outline-warning"><i class="bi bi-stop-circle"></i> Stop</button>
@@ -75,6 +92,10 @@
                             <form method="POST" action="{{ url_for('admin.resume_vm', vm_id=vm.id) }}" style="display:inline-block;">
                                 <button class="btn btn-sm btn-primary"><i class="bi bi-play-circle"></i> Resume</button>
                             </form>
+                            {% elif vm.status in ('pushing', 'pulling') %}
+                            <span class="badge bg-info text-dark me-1">
+                                <i class="bi bi-hourglass-split"></i> In Progress
+                            </span>
                             {% elif vm.status == 'failed' %}
                             {% if vm.node and vm.registry_tag %}
                             <form method="POST" action="{{ url_for('admin.repull_vm', vm_id=vm.id) }}" style="display:inline-block;">
@@ -97,7 +118,7 @@
                 {% endfor %}
                 {% if not ns.has_rows %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-3">No running, stopped, or archived VMs.</td>
+                    <td colspan="8" class="text-center text-muted py-3">No VM records for this user.</td>
                 </tr>
                 {% endif %}
             </tbody>

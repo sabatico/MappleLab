@@ -20,6 +20,20 @@ from app.main.routes import (
 logger = logging.getLogger(__name__)
 
 
+def _op_stage_label(op_status):
+    labels = {
+        'stopping': 'Stopping VM',
+        'pushing': 'Saving to registry',
+        'deleting': 'Cleaning local VM',
+        'pulling': 'Downloading VM from registry',
+        'starting': 'Starting VM',
+        'done': 'Completed',
+        'error': 'Failed',
+        'idle': 'Idle',
+    }
+    return labels.get((op_status or '').strip().lower(), (op_status or 'Working').title())
+
+
 def _int_field(name, default):
     value = request.form.get(name, '').strip()
     if not value:
@@ -74,7 +88,7 @@ def overview():
     with status-aware action controls.
     """
     users = User.query.order_by(User.created_at.desc()).all()
-    status_groups = ('running', 'stopped', 'archived', 'failed')
+    status_groups = ('running', 'stopped', 'archived', 'failed', 'pushing', 'pulling')
     vm_rows = (
         VM.query
         .options(selectinload(VM.node))
@@ -91,11 +105,28 @@ def overview():
         grouped.setdefault(vm.user_id, {status: [] for status in status_groups})
         grouped[vm.user_id][vm.status].append(vm)
 
+    # One-time snapshot of async op status for in-progress rows.
+    op_snapshots = {}
+    for vm in vm_rows:
+        if vm.status not in ('pushing', 'pulling') or not vm.node:
+            continue
+        try:
+            op = current_app.tart.get_op_status(vm.node, vm.name) or {}
+            op_snapshots[vm.id] = {
+                'stage': _op_stage_label(op.get('status')),
+                'progress_pct': op.get('progress_pct'),
+                'transferred_gb': op.get('transferred_gb'),
+                'total_gb': op.get('total_gb'),
+            }
+        except TartAPIError:
+            op_snapshots[vm.id] = {'stage': 'Node unreachable'}
+
     return render_template(
         'admin/overview.html',
         users=users,
         grouped=grouped,
         status_groups=status_groups,
+        op_snapshots=op_snapshots,
     )
 
 
