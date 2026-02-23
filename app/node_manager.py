@@ -1,4 +1,5 @@
 import logging
+import re
 from urllib.parse import urlparse
 from app.tart_client import TartClient, TartAPIError
 
@@ -21,6 +22,18 @@ def _normalize_registry_url(registry_url):
     # Handle values like "host:5001/v2/" by keeping only host:port.
     parsed = urlparse(f'//{value}')
     return parsed.netloc or value.split('/', 1)[0]
+
+
+def _sanitize_registry_repo_segment(value):
+    """
+    Normalize repository path segments to a Tart/OCI-safe shape.
+    """
+    text = (value or '').strip().lower()
+    if not text:
+        return 'vm'
+    text = re.sub(r'[^a-z0-9]+', '-', text)
+    text = re.sub(r'-{2,}', '-', text).strip('-')
+    return text or 'vm'
 
 
 class NodeManager:
@@ -72,4 +85,6 @@ class NodeManager:
     def registry_tag_for(self, username, vm_name, registry_url):
         """Build the full OCI registry path for a VM."""
         base = _normalize_registry_url(registry_url)
-        return f'{base}/{username}/{vm_name}:latest'
+        namespace = _sanitize_registry_repo_segment(username)
+        image_name = _sanitize_registry_repo_segment(vm_name)
+        return f'{base}/{namespace}/{image_name}:latest'

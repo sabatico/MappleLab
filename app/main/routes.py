@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from urllib.parse import urlparse
 from flask import render_template, redirect, url_for, flash, request, current_app
@@ -84,6 +85,25 @@ def _sanitize_registry_tag(tag):
             and configured_host not in ('localhost', '127.0.0.1')
         ):
             parts[0] = configured_authority
+
+    # Normalize repository path components (everything after authority) to a
+    # Tart-safe subset to avoid parse errors for values like email addresses.
+    def _normalize_repo_segment(value):
+        text = (value or '').strip().lower()
+        if not text:
+            return 'vm'
+        text = re.sub(r'[^a-z0-9]+', '-', text)
+        text = re.sub(r'-{2,}', '-', text).strip('-')
+        return text or 'vm'
+
+    for idx in range(1, len(parts)):
+        segment = parts[idx]
+        name_part = segment
+        tag_part = None
+        if idx == (len(parts) - 1) and ':' in segment:
+            name_part, tag_part = segment.rsplit(':', 1)
+        normalized = _normalize_repo_segment(name_part)
+        parts[idx] = f'{normalized}:{tag_part}' if tag_part else normalized
     return '/'.join(parts)
 
 
