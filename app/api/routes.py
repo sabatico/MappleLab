@@ -71,6 +71,53 @@ def _parse_migration_target(status_detail):
         return None
 
 
+def _advance_async_op(vm):
+    """
+    Progress VM async operations (pushing/pulling) from agent op status.
+    Returns True when VM state was changed and should be committed.
+    """
+    if vm.status not in ('pushing', 'pulling') or not vm.node:
+        return False
+
+    op = current_app.tart.get_op_status(vm.node, vm.name)
+    if op.get('status') == 'done':
+        if vm.status == 'pushing':
+            target_node_id = _parse_migration_target(vm.status_detail)
+            if target_node_id:
+                target_node = Node.query.filter_by(id=target_node_id, active=True).first()
+                if not target_node:
+                    vm.status = 'archived'
+                    vm.node_id = None
+                    vm.last_saved_at = datetime.utcnow()
+                    vm.status_detail = (
+                        'Migration push completed but target node is unavailable. '
+                        'Use Resume to start from registry.'
+                    )
+                else:
+                    registry_tag = (vm.registry_tag or '').strip()
+                    current_app.tart.restore_vm(target_node, vm.name, registry_tag)
+                    vm.status = 'pulling'
+                    vm.node_id = target_node.id
+                    vm.status_detail = None
+            else:
+                vm.status = 'archived'
+                vm.node_id = None
+                vm.last_saved_at = datetime.utcnow()
+                vm.status_detail = None
+        elif vm.status == 'pulling':
+            vm.status = 'running'
+            vm.last_started_at = datetime.utcnow()
+            vm.status_detail = None
+        return True
+
+    if op.get('status') == 'error':
+        vm.status = 'failed'
+        vm.status_detail = op.get('error', 'Unknown error')
+        return True
+
+    return False
+
+
 @bp.route('/vms')
 @login_required
 def list_vms():
@@ -84,8 +131,17 @@ def list_vms():
 
     vms = VM.query.filter_by(user_id=current_user.id).all()
 
-    # Reconcile stale local statuses from agent-reported VM states.
+    # Advance async ops and reconcile local statuses from agent VM states.
     changed = False
+    async_vms = [vm for vm in vms if vm.status in ('pushing', 'pulling') and vm.node]
+    for vm in async_vms:
+        try:
+            if _advance_async_op(vm):
+                changed = True
+                logger.info("list_vms() — %r op advanced → %s", vm.name, vm.status)
+        except TartAPIError:
+            pass
+
     local_vms = [vm for vm in vms if vm.node and vm.status in ('creating', 'running', 'stopped', 'failed')]
     node_vm_maps = {}
     for vm in local_vms:
@@ -135,41 +191,12 @@ def vm_status(vm_name):
     # If async op in progress, poll the agent for completion.
     if vm.status in ('pushing', 'pulling') and vm.node:
         try:
-            op = current_app.tart.get_op_status(vm.node, vm_name)
-            if op.get('status') == 'done':
-                if vm.status == 'pushing':
-                    target_node_id = _parse_migration_target(vm.status_detail)
-                    if target_node_id:
-                        target_node = Node.query.filter_by(id=target_node_id, active=True).first()
-                        if not target_node:
-                            vm.status = 'archived'
-                            vm.node_id = None
-                            vm.last_saved_at = datetime.utcnow()
-                            vm.status_detail = (
-                                'Migration push completed but target node is unavailable. '
-                                'Use Resume to start from registry.'
-                            )
-                        else:
-                            registry_tag = (vm.registry_tag or '').strip()
-                            current_app.tart.restore_vm(target_node, vm_name, registry_tag)
-                            vm.status = 'pulling'
-                            vm.node_id = target_node.id
-                            vm.status_detail = None
-                    else:
-                        vm.status = 'archived'
-                        vm.node_id = None
-                        vm.last_saved_at = datetime.utcnow()
-                elif vm.status == 'pulling':
-                    vm.status = 'running'
-                    vm.last_started_at = datetime.utcnow()
-                    vm.status_detail = None
+            if _advance_async_op(vm):
                 db.session.commit()
-                logger.info("vm_status() — %r op done → %s", vm_name, vm.status)
-            elif op.get('status') == 'error':
-                vm.status = 'failed'
-                vm.status_detail = op.get('error', 'Unknown error')
-                db.session.commit()
-                logger.error("vm_status() — %r op error: %s", vm_name, vm.status_detail)
+                if vm.status == 'failed':
+                    logger.error("vm_status() — %r op error: %s", vm_name, vm.status_detail)
+                else:
+                    logger.info("vm_status() — %r op advanced → %s", vm_name, vm.status)
         except TartAPIError:
             pass  # agent unreachable; keep polling
     elif _sync_vm_status_from_agent(vm):
