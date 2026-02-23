@@ -24,6 +24,15 @@ def _apply_mail_config(settings):
     current_app.config['MAIL_USERNAME'] = settings.smtp_user or ''
     current_app.config['MAIL_PASSWORD'] = settings.smtp_password or ''
     current_app.config['MAIL_DEFAULT_SENDER'] = settings.smtp_from or settings.smtp_user or ''
+    # Flask-Mail caches config into app.extensions["mail"] at init time.
+    # Re-init so DB-backed SMTP changes are used immediately.
+    mail.init_app(current_app)
+
+
+def _send_message(msg):
+    """Send using an explicit connection context."""
+    with mail.connect() as conn:
+        conn.send(msg)
 
 
 def send_invite_email(user):
@@ -44,7 +53,7 @@ def send_invite_email(user):
     html = render_template('email/invite.html', invite_link=invite_link)
     msg = Message(subject=subject, recipients=[user.email], body=body, html=html)
     try:
-        mail.send(msg)
+        _send_message(msg)
         logger.info("Invite email sent to %s", user.email)
         return True
     except Exception as e:
@@ -66,7 +75,7 @@ def send_test_email(to_email):
         html='<p>SMTP configuration test email from <strong>Orchard UI</strong>.</p>',
     )
     try:
-        mail.send(msg)
+        _send_message(msg)
         logger.info("SMTP test email sent to %s", to_email)
         return True
     except Exception as e:
