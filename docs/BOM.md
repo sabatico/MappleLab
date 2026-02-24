@@ -1,6 +1,6 @@
-# Orchard UI - Critical Software BOM
+# MAppleLab - Critical Software BOM
 
-This document lists the critical software components used by Orchard UI.
+This document lists the critical software components used by MAppleLab.
 
 > Scope: runtime and infrastructure components that are required (or strongly recommended) for install, operation, and maintenance.
 

@@ -4,7 +4,7 @@ Use this in feature demos to explain what users and admins do inside the portal.
 
 ```mermaid
 flowchart TB
-    PortalRoot[Orchard UI Web Portal]
+    PortalRoot[MAppleLab Web Portal]
 
     subgraph accessLayer [Access and Identity]
         LoginPage[Login and Password Setup]

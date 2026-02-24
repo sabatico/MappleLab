@@ -12,7 +12,7 @@ flowchart LR
 
     subgraph managerZone [Manager Node]
         ReverseProxy[Reverse Proxy TLS Entry Point]
-        PortalApp[Orchard UI Portal]
+        PortalApp[MAppleLab Portal]
         SessionStore[Portal Session and State]
         UsageView[Admin Usage Analytics View]
     end

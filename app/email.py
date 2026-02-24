@@ -44,9 +44,9 @@ def send_invite_email(user):
     _apply_mail_config(settings)
 
     invite_link = url_for('auth.set_password', token=user.invite_token, _external=True)
-    subject = "You're invited to Orchard UI"
+    subject = "You're invited to MAppleLab"
     body = (
-        "You have been invited to Orchard UI.\n\n"
+        "You have been invited to MAppleLab.\n\n"
         f"Open this link to set your password:\n{invite_link}\n\n"
         "This invite link expires in 72 hours."
     )
@@ -69,10 +69,10 @@ def send_test_email(to_email):
 
     _apply_mail_config(settings)
     msg = Message(
-        subject='Orchard UI SMTP test',
+        subject='MAppleLab SMTP test',
         recipients=[to_email],
-        body='SMTP configuration test email from Orchard UI.',
-        html='<p>SMTP configuration test email from <strong>Orchard UI</strong>.</p>',
+        body='SMTP configuration test email from MAppleLab.',
+        html='<p>SMTP configuration test email from <strong>MAppleLab</strong>.</p>',
     )
     try:
         _send_message(msg)

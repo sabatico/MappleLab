@@ -1,5 +1,5 @@
 """
-Orchard UI — presentation diagram generator.
+MAppleLab — presentation diagram generator.
 Produces three standalone .pptx files (one diagram per file) in the same folder.
 The generated diagrams include browser VNC, native `.vncloc` direct TCP paths,
 and admin usage analytics references.
@@ -213,7 +213,7 @@ def build_diagram1():
     sl   = blank_slide(prs)
     fill_bg(sl, C["bg"])
     slide_title(sl,
-                "Orchard UI — Environment Architecture",
+                "MAppleLab — Environment Architecture",
                 "End-to-end user journey from web browser to virtual machines and archived storage")
 
     # ── Zones ────────────────────────────────
@@ -252,7 +252,7 @@ def build_diagram1():
     # ── Manager Node ─────────────────────────
     mx = Inches(2.98)
     box(sl, mx, Inches(1.52), Inches(1.85), bh, C["blue"],
-        "🌐  Orchard UI Portal\nFlask + Gunicorn", 9, border_color=C["border"])
+        "🌐  MAppleLab Portal\nFlask + Gunicorn", 9, border_color=C["border"])
     box(sl, mx, Inches(2.42), Inches(1.85), bh, C["blue"],
         "🔒  TLS Reverse Proxy\nCaddy / nginx", 9, border_color=C["border"])
     box(sl, mx, Inches(3.35), Inches(1.85), bh, C["panel"],
@@ -355,7 +355,7 @@ def build_diagram2():
     sl  = blank_slide(prs)
     fill_bg(sl, C["bg"])
     slide_title(sl,
-                "Orchard UI — Technical Architecture",
+                "MAppleLab — Technical Architecture",
                 "Internal modules, data stores, and protocol-level communication channels")
 
     # ── Manager block ────────────────────────
@@ -495,7 +495,7 @@ def build_diagram3():
     sl  = blank_slide(prs)
     fill_bg(sl, C["bg"])
     slide_title(sl,
-                "Orchard UI — Portal Structure",
+                "MAppleLab — Portal Structure",
                 "Component hierarchy, user-facing features, and admin functions")
 
     # ── Root portal box ──────────────────────
@@ -503,7 +503,7 @@ def build_diagram3():
     root_x = (SLIDE_W - root_w) / 2
     root_y = Inches(1.0)
     box(sl, root_x, root_y, root_w, root_h, C["blue"],
-        "🌐  Orchard UI Portal", 12, bold=True, border_color=C["border"])
+        "🌐  MAppleLab Portal", 12, bold=True, border_color=C["border"])
 
     # ── Auth layer ───────────────────────────
     auth_y = Inches(1.85)

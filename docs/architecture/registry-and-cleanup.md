@@ -1,6 +1,6 @@
 # Registry and Cleanup
 
-Orchard UI uses a Docker registry as persistence for VM save/resume and migration workflows.
+MAppleLab uses a Docker registry as persistence for VM save/resume and migration workflows.
 
 ## Lifecycle Pattern
 

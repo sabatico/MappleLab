@@ -1,6 +1,6 @@
 # Reverse Proxy and TLS
 
-A reverse proxy (Caddy or nginx) provides HTTPS access to Orchard UI. **HTTPS is required for remote VNC console access** — Apple's VNC authentication uses browser cryptography APIs that only work on secure (`https://`) pages.
+A reverse proxy (Caddy or nginx) provides HTTPS access to MAppleLab. **HTTPS is required for remote VNC console access** — Apple's VNC authentication uses browser cryptography APIs that only work on secure (`https://`) pages.
 
 This guide covers **Caddy**, which is the simplest option for a private network or LAN setup. A ready-to-use example with internal (`192.168.1.195`) and external (`108.194.55.108`) hosts is in `config/Caddyfile.example`.
 
@@ -127,7 +127,7 @@ SESSION_COOKIE_HTTPONLY=true
 SESSION_COOKIE_SAMESITE=Lax
 ```
 
-Restart Orchard UI:
+Restart MAppleLab:
 
 ```bash
 cd /Users/Shared/TART_Manager
@@ -148,7 +148,7 @@ You will see a **certificate warning** the first time because the browser does n
 
 ### Step 7: Trust Caddy's Local CA on Client Macs
 
-Do this once on each Mac that will access Orchard UI.
+Do this once on each Mac that will access MAppleLab.
 
 **Find the CA root certificate on the manager Mac:**
 

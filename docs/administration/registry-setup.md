@@ -6,7 +6,7 @@ The Docker registry stores saved VM disk images. It runs as a Docker container o
 
 ## 1. Start the Registry
 
-Run the setup script from your Orchard UI install directory:
+Run the setup script from your MAppleLab install directory:
 
 ```bash
 cd /Users/Shared/TART_Manager

@@ -1,6 +1,6 @@
 # Installation
 
-This guide installs Orchard UI on the manager Mac.  
+This guide installs MAppleLab on the manager Mac.  
 Complete [Prerequisites](prerequisites.md) first.
 
 ---
@@ -168,7 +168,7 @@ http://localhost:5000
 
 or `https://localhost:5000` if TLS is configured.
 
-You should see the Orchard UI login page.
+You should see the MAppleLab login page.
 
 If you see a certificate warning when using the self-signed cert, click **Advanced → Proceed** (this is expected for self-signed certs).
 

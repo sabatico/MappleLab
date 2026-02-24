@@ -200,7 +200,7 @@ Expected output shows values at or near `65536 200000`.
 
 ## 7. Prepare Configuration Values
 
-Before installing Orchard UI, collect the following values:
+Before installing MAppleLab, collect the following values:
 
 | Value | What it is | Example |
 |---|---|---|

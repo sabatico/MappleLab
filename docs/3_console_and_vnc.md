@@ -2,11 +2,11 @@
 
 > Status: Complete and actively tuned.
 
-This document reflects the current VNC implementation used by Orchard UI and the related tuning controls.
+This document reflects the current VNC implementation used by MAppleLab and the related tuning controls.
 
 ## Current VNC modes
 
-Orchard UI supports three transport modes:
+MAppleLab supports three transport modes:
 
 1. Manager relay (default LAN mode):
    - Browser -> manager `/console/ws/<vm>` (WSS)

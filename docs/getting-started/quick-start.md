@@ -6,7 +6,7 @@ This guide walks you through first-time setup after installation: creating your 
 
 ## 1. Create the First Admin Account
 
-Orchard UI uses invitation-based account creation. The very first admin account must be created from the command line once.
+MAppleLab uses invitation-based account creation. The very first admin account must be created from the command line once.
 
 Open a new Terminal window, go to your install directory, and run:
 
@@ -52,7 +52,7 @@ exit()
 
 ## 3. Configure SMTP (Recommended)
 
-SMTP lets Orchard UI send invite emails to new users. You can skip this and create user passwords manually, but setting it up now is easier.
+SMTP lets MAppleLab send invite emails to new users. You can skip this and create user passwords manually, but setting it up now is easier.
 
 1. Click your email address in the top-right corner
 2. Select **Settings**

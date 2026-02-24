@@ -1,6 +1,6 @@
 # User Management
 
-Orchard UI uses an invitation-based system. Admin users create accounts for others and send invite links. Users cannot register themselves.
+MAppleLab uses an invitation-based system. Admin users create accounts for others and send invite links. Users cannot register themselves.
 
 ---
 

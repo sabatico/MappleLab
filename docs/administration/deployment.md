@@ -1,12 +1,12 @@
 # Deployment and Operations
 
-This guide covers how to run Orchard UI in the background as a persistent service that starts automatically after a reboot.
+This guide covers how to run MAppleLab in the background as a persistent service that starts automatically after a reboot.
 
 ---
 
 ## Option A: Manual Start (Foreground)
 
-Start Orchard UI manually in a terminal window:
+Start MAppleLab manually in a terminal window:
 
 ```bash
 cd /Users/Shared/TART_Manager
@@ -145,7 +145,7 @@ sudo launchctl load -w /Library/LaunchDaemons/com.orchard-ui.plist
 
 ---
 
-## Updating Orchard UI
+## Updating MAppleLab
 
 The `deploy.sh` script pulls the latest code and reinstalls dependencies:
 

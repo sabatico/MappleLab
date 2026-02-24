@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Orchard UI uses a manager-and-agents architecture for TART VM lifecycle control.
+MAppleLab uses a manager-and-agents architecture for TART VM lifecycle control.
 
 ## System Diagram
 

@@ -94,7 +94,7 @@ curl http://localhost:5001/v2/_catalog
 
 You should see the same list of VM repositories that existed before the restore.
 
-### Step 6: Start Orchard UI
+### Step 6: Start MAppleLab
 
 ```bash
 ./run.sh

@@ -1,4 +1,4 @@
-# Transition Plan: Orchard UI → TART-Direct Architecture
+# Transition Plan: MAppleLab → TART-Direct Architecture
 
 > **Date**: 2026-02-21
 > **Source**: Existing Orchard-based implementation (Modules 1–3 complete)

@@ -1,6 +1,6 @@
 # Node Setup
 
-Prepare each Mac node before adding it to Orchard UI. These steps must be done on **every node Mac**, not the manager.
+Prepare each Mac node before adding it to MAppleLab. These steps must be done on **every node Mac**, not the manager.
 
 ---
 
@@ -64,7 +64,7 @@ tart pull 192.168.1.195:5001/testuser/testvm:latest --insecure
 
 A system dialog should appear asking **"Allow to find devices on local network?"**. Click **Allow**.
 
-After clicking Allow, retry any save/resume/migrate operations from the Orchard UI.
+After clicking Allow, retry any save/resume/migrate operations from the MAppleLab.
 
 ---
 
@@ -140,7 +140,7 @@ The agent runs on port `7000` by default.
 
 ## 8. Validate in the UI
 
-1. Log in to Orchard UI as admin
+1. Log in to MAppleLab as admin
 2. Click **Nodes** in the navigation bar
 3. Click **Add Node** and fill in the node's details
 4. After adding, the node row should show current health stats (CPU, RAM, disk, free slots)
