@@ -79,13 +79,14 @@
 
                 <div class="d-flex gap-1 flex-wrap mt-2 vm-detail-actions">
                     {% from '_macros/action_buttons.html' import
-                        vm_btn_console, vm_btn_download_vncloc, vm_btn_stop, vm_btn_save_shutdown,
+                        vm_btn_console, vm_btn_download_vncloc, vm_btn_download_vnc, vm_btn_stop, vm_btn_save_shutdown,
                         vm_btn_save, vm_btn_start, vm_btn_recover_start, vm_btn_resume, vm_btn_repull,
                         vm_btn_disconnect, vm_btn_delete %}
                     {# Running: Console + Stop + Save & Shutdown #}
                     {% if vm.status == 'running' %}
                     {{ vm_btn_console(url_for('console.vnc', vm_name=vm.name), size='') }}
                     {{ vm_btn_download_vncloc(url_for('console.download_vncloc', vm_name=vm.name), size='') }}
+                    {{ vm_btn_download_vnc(url_for('console.download_vnc', vm_name=vm.name), size='') }}
                     {{ vm_btn_stop(url_for('main.stop_vm', vm_name=vm.name), vm.name, size='') }}
                     {{ vm_btn_save_shutdown(url_for('main.save_vm', vm_name=vm.name), vm.name, size='') }}
                     {% endif %}

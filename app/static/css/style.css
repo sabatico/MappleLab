@@ -64,3 +64,26 @@
 .vm-detail-actions form {
     margin-bottom: 0;
 }
+
+/* VNC download buttons: platform-specific styling */
+.vnc-btn-mac {
+    background-color: #6e6e73;
+    color: #fff;
+    border-color: #5c5c60;
+}
+.vnc-btn-mac:hover {
+    background-color: #86868b;
+    color: #fff;
+    border-color: #6e6e73;
+}
+
+.vnc-btn-windows {
+    background-color: #0078d4;
+    color: #fff;
+    border-color: #006cbd;
+}
+.vnc-btn-windows:hover {
+    background-color: #1084d8;
+    color: #fff;
+    border-color: #0078d4;
+}

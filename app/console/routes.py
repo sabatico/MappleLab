@@ -152,45 +152,11 @@ def disconnect(vm_name):
 @login_required
 def download_vncloc(vm_name):
     """Download a macOS Screen Sharing (.vncloc) file for direct TCP VNC."""
-    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
-    if vm.status != 'running':
-        flash(f'VM "{vm_name}" must be running to download a connection file.', 'warning')
-        return redirect(url_for('main.vm_detail', vm_name=vm_name))
-    if not vm.node:
-        flash(f'VM "{vm_name}" has no assigned node.', 'danger')
-        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+    result = _prepare_vnc_direct_proxy(vm_name)
+    if not isinstance(result, tuple):
+        return result
 
-    try:
-        _ws_port, vnc_port = current_app.tart.start_vnc(vm.node, vm_name)
-    except TartAPIError as e:
-        flash(f'Failed to prepare VNC endpoint: {e}', 'danger')
-        return redirect(url_for('main.vm_detail', vm_name=vm_name))
-
-    # Native VNC clients require raw RFB/TCP to VM VNC, not node websockify WS.
-    # Use VM IP as the direct proxy target.
-    vm_ip = current_app.tart.get_vm_ip(vm.node, vm_name)
-    if not vm_ip:
-        flash(f'Could not determine VM IP for "{vm_name}".', 'danger')
-        return redirect(url_for('main.vm_detail', vm_name=vm_name))
-
-    try:
-        proxy_port = current_app.direct_tcp_proxy.start_proxy(
-            vm_name,
-            vm_ip,
-            vnc_port,
-        )
-    except Exception as e:
-        logger.error(
-            "download_vncloc(%s) failed to start direct proxy to %s:%s: %s",
-            vm_name,
-            vm_ip,
-            vnc_port,
-            e,
-        )
-        flash(f'Failed to prepare direct TCP proxy: {e}', 'danger')
-        return redirect(url_for('main.vm_detail', vm_name=vm_name))
-
-    manager_host = request.host.split(':', 1)[0]
+    manager_host, proxy_port = result
     vnc_username = quote(current_app.config.get('VNC_DEFAULT_USERNAME', ''), safe='')
     vnc_password = quote(current_app.config.get('VNC_DEFAULT_PASSWORD', ''), safe='')
     if vnc_username or vnc_password:
@@ -208,6 +174,66 @@ def download_vncloc(vm_name):
     filename = f'{vm_name}.vncloc'
     return current_app.response_class(
         vncloc_xml,
+        mimetype='application/octet-stream',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+def _prepare_vnc_direct_proxy(vm_name):
+    """
+    Start VNC on agent and direct TCP proxy. Returns (manager_host, proxy_port) or
+    a redirect Response on error. Shared by download_vncloc and download_vnc.
+    """
+    vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
+    if vm.status != 'running':
+        flash(f'VM "{vm_name}" must be running to download a connection file.', 'warning')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+    if not vm.node:
+        flash(f'VM "{vm_name}" has no assigned node.', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    try:
+        _ws_port, vnc_port = current_app.tart.start_vnc(vm.node, vm_name)
+    except TartAPIError as e:
+        flash(f'Failed to prepare VNC endpoint: {e}', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    vm_ip = current_app.tart.get_vm_ip(vm.node, vm_name)
+    if not vm_ip:
+        flash(f'Could not determine VM IP for "{vm_name}".', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    try:
+        proxy_port = current_app.direct_tcp_proxy.start_proxy(
+            vm_name,
+            vm_ip,
+            vnc_port,
+        )
+    except Exception as e:
+        logger.error(
+            "VNC direct proxy failed for %s to %s:%s: %s",
+            vm_name, vm_ip, vnc_port, e,
+        )
+        flash(f'Failed to prepare direct proxy: {e}', 'danger')
+        return redirect(url_for('main.vm_detail', vm_name=vm_name))
+
+    manager_host = request.host.split(':', 1)[0]
+    return (manager_host, proxy_port)
+
+
+@bp.route('/<vm_name>/vnc')
+@login_required
+def download_vnc(vm_name):
+    """Download a Windows-compatible .vnc file (RealVNC/TightVNC format) for direct TCP VNC."""
+    result = _prepare_vnc_direct_proxy(vm_name)
+    if not isinstance(result, tuple):
+        return result
+
+    manager_host, proxy_port = result
+    vnc_content = f'Host={manager_host}\nPort={proxy_port}\n'
+    filename = f'{vm_name}.vnc'
+    return current_app.response_class(
+        vnc_content,
         mimetype='application/octet-stream',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
     )
