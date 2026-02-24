@@ -230,7 +230,13 @@ def download_vnc(vm_name):
         return result
 
     manager_host, proxy_port = result
-    vnc_content = f'Host={manager_host}\nPort={proxy_port}\n'
+    # RealVNC .vnc format: Host=ip:port (combined), Quality=LOW for lower latency,
+    # Scaling=None for 100% (no scaling). See RealVNC Viewer Parameter Reference.
+    vnc_content = (
+        f'Host={manager_host}:{proxy_port}\n'
+        'Quality=LOW\n'
+        'Scaling=None\n'
+    )
     filename = f'{vm_name}.vnc'
     return current_app.response_class(
         vnc_content,
