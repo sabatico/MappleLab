@@ -65,25 +65,23 @@
     margin-bottom: 0;
 }
 
-/* VNC download buttons: platform-specific styling */
+/* VNC download buttons: outline style, platform-colored border/text (matches other action buttons) */
 .vnc-btn-mac {
-    background-color: #6e6e73;
-    color: #fff;
-    border-color: #5c5c60;
+    border-color: #6e6e73;
+    color: #86868b;
 }
 .vnc-btn-mac:hover {
-    background-color: #86868b;
-    color: #fff;
-    border-color: #6e6e73;
+    border-color: #86868b;
+    color: #a1a1a6;
+    background-color: transparent;
 }
 
 .vnc-btn-windows {
-    background-color: #0078d4;
-    color: #fff;
-    border-color: #006cbd;
+    border-color: #0078d4;
+    color: #4da3ff;
 }
 .vnc-btn-windows:hover {
-    background-color: #1084d8;
-    color: #fff;
-    border-color: #0078d4;
+    border-color: #1084d8;
+    color: #6eb8ff;
+    background-color: transparent;
 }

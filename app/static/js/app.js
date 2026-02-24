@@ -96,10 +96,50 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!link) return;
         if (link.target === '_blank') return;
         if (link.hasAttribute('download')) return;
+        if (link.classList.contains('vnc-download-link')) return;  // handled separately
         const href = link.getAttribute('href') || '';
         if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
         if (link.hasAttribute('data-no-loading-overlay')) return;
         beginPending();
+    });
+
+    // VNC download links: show overlay until fetch completes, then trigger download and hide.
+    document.addEventListener('click', async (evt) => {
+        if (evt.defaultPrevented) return;
+        if (evt.button !== 0) return;
+        if (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey) return;
+        const link = evt.target.closest('a.vnc-download-link');
+        if (!link) return;
+        const href = link.getAttribute('href') || '';
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+        evt.preventDefault();
+        beginPending();
+        setOverlayMessage('Preparing download...', '');
+
+        try {
+            const resp = await fetch(href, { credentials: 'same-origin' });
+            if (!resp.ok) throw new Error(resp.statusText);
+            const blob = await resp.blob();
+            const cd = resp.headers.get('Content-Disposition') || '';
+            const m = cd.match(/filename="?([^";\n]+)"?/);
+            const ext = link.dataset.downloadExt || 'vnc';
+            const filename = m ? m[1].trim() : `connection.${ext}`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.warn('VNC download failed:', err);
+            window.location.href = href;  // fallback to normal navigation
+        } finally {
+            endPending();
+        }
     });
 
     // HTMX requests should also trigger the same centralized loading overlay.

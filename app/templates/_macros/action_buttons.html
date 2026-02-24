@@ -13,14 +13,14 @@
 {% endmacro %}
 
 {% macro vm_btn_download_vncloc(url, size='sm') %}
-<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} me-1 vnc-btn-mac" title="Download for macOS Screen Sharing (.vncloc)" download data-no-loading-overlay>
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-secondary me-1 vnc-btn-mac vnc-download-link" title="Download for macOS Screen Sharing (.vncloc)" data-download-ext="vncloc">
     {% from '_macros/icons.html' import icon_vnc_mac %}
     {{ icon_vnc_mac() }} VNC
 </a>
 {% endmacro %}
 
 {% macro vm_btn_download_vnc(url, size='sm') %}
-<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} me-1 vnc-btn-windows" title="Download for Windows (RealVNC/TightVNC .vnc)" download data-no-loading-overlay>
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-secondary me-1 vnc-btn-windows vnc-download-link" title="Download for Windows (RealVNC/TightVNC .vnc)" data-download-ext="vnc">
     {% from '_macros/icons.html' import icon_vnc_windows %}
     {{ icon_vnc_windows() }} VNC
 </a>
