@@ -251,7 +251,7 @@ def build_presentation():
                  "Leveraging Apple Silicon for On-Demand\nmacOS Access Across Forcepoint",
                  28, color=FP["white"], font_name="Segoe UI")
     add_text_box(sl, Inches(1.2), Inches(3.8), Inches(10), Inches(0.8),
-                 "A Corporate Private Cloud for Native macOS Virtual Machines\nRepurposed Hardware  |  BSL 1.1 Licensed  |  One-Time Production License",
+                 "A Corporate Private Cloud for Native macOS Virtual Machines\nRepurposed Hardware  |  Free Tier up to 100 CPU Cores  |  Professional Setup & Maintenance Services",
                  14, color=FP["mid_gray"], font_name="Segoe UI")
 
     # Bottom tag line
@@ -336,7 +336,7 @@ def build_presentation():
          FP["teal"], "\U0001F680"),
         ("Native Performance", "Apple Silicon M-series\nvirtualization delivers\nfull macOS fidelity —\nnot a Hackintosh.",
          FP["accent_blue"], "\u26A1"),
-        ("Minimal Investment", "Leverages decommissioned\nMac Mini & MacBook Pro\nhardware. One-time BSL 1.1\nlicense for production use.",
+        ("Free Tier Included", "Leverages decommissioned\nMac Mini & MacBook Pro\nhardware. Software free up\nto 100 CPU cores (~20 VMs).",
          FP["green"], "\U0001F4B0"),
     ]
     for i, (title, desc, color, icon) in enumerate(pillars):
@@ -389,10 +389,10 @@ def build_presentation():
          "to existing Go4Labs environments via port mapping.\n"
          "Browser or direct VNC access from anywhere on corporate network.",
          FP["amber"]),
-        ("Licensing: Apple + BSL 1.1",
+        ("Licensing: Free Tier + Services",
          "Apple EULA compliant — native Virtualization.framework,\n"
-         "max 2 VMs per physical node. MAppleLab is distributed under\n"
-         "BSL 1.1: source-available, production use requires a one-time license.",
+         "max 2 VMs per physical node. TART: Fair Use license, free up to 100 cores.\n"
+         "MAppleLab: free at this tier. Setup & maintenance services available.",
          FP["green"]),
     ]
     for i, (title, desc, color) in enumerate(comps):
@@ -439,7 +439,7 @@ def build_presentation():
          "Add new nodes in minutes with an install script. Scale the cluster as demand grows.",
          FP["amber"]),
         ("\u2696\uFE0F", "Fully Licensed & Compliant",
-         "Apple EULA compliant (native Virtualization.framework, 2 VMs/node). MAppleLab under BSL 1.1 — one-time production license.",
+         "Apple EULA (2 VMs/node). TART Fair Use free tier (100 cores). MAppleLab free at this level. No licensing barriers.",
          FP["teal"]),
         ("\U0001F3AF", "Native Performance",
          "M-series silicon virtualization is on par with physical Mac. Not emulation. Full macOS fidelity.",
@@ -464,7 +464,7 @@ def build_presentation():
     add_rect(sl, Inches(0.6), Inches(6.5), Inches(12), Inches(0.55), FP["teal_dark"],
              border_color=FP["teal"], radius=6000)
     add_text_box(sl, Inches(0.8), Inches(6.55), Inches(11.5), Inches(0.45),
-                 "FP MAppleLab delivers instant, compliant, native macOS access with minimal infrastructure investment",
+                 "FP MAppleLab delivers instant, compliant, native macOS access — free tier covers up to 20 concurrent VMs",
                  13, bold=True, color=FP["white"], align=PP_ALIGN.CENTER,
                  v_anchor=MSO_ANCHOR.MIDDLE)
     fp_footer(sl)
@@ -952,13 +952,87 @@ def build_presentation():
     add_rect(sl, Inches(0.4), Inches(6.5), Inches(12.4), Inches(0.55), FP["teal_dark"],
              border_color=FP["teal"], radius=6000)
     add_text_box(sl, Inches(0.6), Inches(6.55), Inches(12.0), Inches(0.45),
-                 "Open-source foundations  |  BSL 1.1 licensed  |  One-time license grants full production use and modification rights",
+                 "TART: Fair Use free tier (100 cores)  |  MAppleLab: free at this level  |  Professional setup and maintenance services available",
                  13, bold=True, color=FP["white"], align=PP_ALIGN.CENTER,
                  v_anchor=MSO_ANCHOR.MIDDLE)
     fp_footer(sl)
 
     # ══════════════════════════════════════════
-    # SLIDE 17 — ARCHITECTURE DIAGRAM (Env)
+    # SLIDE 17 — LICENSING & COST MODEL
+    # ══════════════════════════════════════════
+    sl = blank_slide(prs)
+    fill_bg(sl, FP["dark"])
+    slide_title(sl, "Licensing & Cost Model",
+                "Free software tier covers Forcepoint's needs — professional services for setup and maintenance")
+
+    # ── Left: Free tier card ─────────────────
+    card_box(sl, Inches(0.5), Inches(1.5), Inches(5.9), Inches(3.2), border=FP["green"])
+    add_rect(sl, Inches(0.5), Inches(1.5), Inches(5.9), Inches(0.4), FP["green"])
+    add_text_box(sl, Inches(0.7), Inches(1.52), Inches(5.5), Inches(0.36),
+                 "FREE TIER — Software Licensing", 14, bold=True,
+                 color=FP["dark"], align=PP_ALIGN.CENTER)
+
+    free_items = [
+        ("TART Runtime", "Fair Use license — free for up to 100 CPU cores", FP["teal"]),
+        ("MAppleLab UI", "Free for deployments within the TART free tier", FP["teal"]),
+        ("Capacity", "~20 concurrent running VMs (at 4-5 cores each)", FP["accent_blue"]),
+        ("Daily Users", "Stopped VMs consume zero cores — daily active\nusers far exceed 20 with proper scheduling", FP["accent_blue"]),
+        ("Licensing Cost", "ZERO for software at this scale", FP["green"]),
+    ]
+    for i, (label, desc, color) in enumerate(free_items):
+        iy = Inches(2.05) + i * Inches(0.52)
+        add_rect(sl, Inches(0.7), iy, Inches(0.06), Inches(0.42), color)
+        add_text_box(sl, Inches(0.9), iy, Inches(1.6), Inches(0.22),
+                     label, 10, bold=True, color=color)
+        add_text_box(sl, Inches(0.9), iy + Inches(0.2), Inches(5.2), Inches(0.28),
+                     desc, 9, color=FP["light_gray"])
+
+    # ── Right: Services card ─────────────────
+    card_box(sl, Inches(6.8), Inches(1.5), Inches(5.9), Inches(3.2), border=FP["amber"])
+    add_rect(sl, Inches(6.8), Inches(1.5), Inches(5.9), Inches(0.4), FP["amber"])
+    add_text_box(sl, Inches(7.0), Inches(1.52), Inches(5.5), Inches(0.36),
+                 "PROFESSIONAL SERVICES", 14, bold=True,
+                 color=FP["dark"], align=PP_ALIGN.CENTER)
+
+    svc_items = [
+        ("Initial Configuration", "Cluster setup, node deployment, network\nintegration with Go4Labs, TLS configuration", FP["amber"]),
+        ("Golden Image Build", "Pre-configured macOS VMs with Forcepoint\npolicies, agents, and standard tooling", FP["amber"]),
+        ("Ongoing Maintenance", "Node fleet management, software updates,\nregistry maintenance, troubleshooting", FP["amber"]),
+        ("Custom Development", "Feature requests, integrations, workflow\nautomation tailored to Forcepoint needs", FP["amber"]),
+    ]
+    for i, (label, desc, color) in enumerate(svc_items):
+        iy = Inches(2.05) + i * Inches(0.62)
+        add_rect(sl, Inches(7.0), iy, Inches(0.06), Inches(0.52), color)
+        add_text_box(sl, Inches(7.2), iy, Inches(5.2), Inches(0.22),
+                     label, 10, bold=True, color=color)
+        add_text_box(sl, Inches(7.2), iy + Inches(0.22), Inches(5.2), Inches(0.32),
+                     desc, 9, color=FP["light_gray"])
+
+    # ── Bottom: capacity math ─────────────────
+    card_box(sl, Inches(0.5), Inches(4.9), Inches(12.2), Inches(1.3), border=FP["teal"])
+    add_rect(sl, Inches(0.5), Inches(4.9), Inches(12.2), Inches(0.06), FP["teal"])
+    add_text_box(sl, Inches(0.8), Inches(5.05), Inches(11.6), Inches(0.35),
+                 "Capacity Planning: Free Tier Accommodates Forcepoint's Scale", 13,
+                 bold=True, color=FP["teal_light"])
+
+    capacity_lines = [
+        "\u25B8  100 CPU cores \u2248 10 nodes (2 VMs each) \u2248 20 concurrent running VMs",
+        "\u25B8  Stopped/archived VMs consume no cores — users share capacity across shifts and time zones",
+        "\u25B8  With ad-hoc usage patterns, 20 concurrent VMs can serve 50+ daily active users comfortably",
+    ]
+    add_multiline_text(sl, Inches(0.8), Inches(5.4), Inches(11.6), Inches(0.7),
+                       capacity_lines, font_size=10, color=FP["light_gray"])
+
+    add_rect(sl, Inches(0.5), Inches(6.5), Inches(12.2), Inches(0.55), FP["teal_dark"],
+             border_color=FP["teal"], radius=6000)
+    add_text_box(sl, Inches(0.7), Inches(6.55), Inches(11.8), Inches(0.45),
+                 "Software is free at Forcepoint's scale — professional services ensure a smooth, maintained deployment",
+                 13, bold=True, color=FP["white"], align=PP_ALIGN.CENTER,
+                 v_anchor=MSO_ANCHOR.MIDDLE)
+    fp_footer(sl)
+
+    # ══════════════════════════════════════════
+    # SLIDE 18 — ARCHITECTURE DIAGRAM (Env)
     # Embed the Mermaid-based diagrams as reference slides
     # ══════════════════════════════════════════
     sl = blank_slide(prs)
@@ -1099,7 +1173,7 @@ def build_presentation():
     add_text_box(sl, Inches(1.2), Inches(2.0), Inches(10), Inches(0.8),
                  "FP MAppleLab", 48, bold=True, color=FP["teal_light"])
     add_text_box(sl, Inches(1.2), Inches(2.9), Inches(10), Inches(0.6),
-                 "On-Demand macOS. Native Performance. Minimal Investment.", 24,
+                 "On-Demand macOS. Native Performance. Free to Start.", 24,
                  color=FP["white"])
 
     add_rect(sl, Inches(1.2), Inches(4.0), Inches(8), Pt(1.5), FP["teal"])

@@ -45,7 +45,14 @@ class TartClient:
         except requests.exceptions.Timeout:
             raise TartAPIError(f'TART agent request timed out: {method} {path}')
         except requests.exceptions.HTTPError as e:
-            raise TartAPIError(str(e), status_code=e.response.status_code)
+            msg = str(e)
+            try:
+                body = e.response.json()
+                if isinstance(body, dict) and body.get('error'):
+                    msg = body['error']
+            except Exception:
+                pass
+            raise TartAPIError(msg, status_code=e.response.status_code)
 
     # ── Node health ────────────────────────────────────────────────────────────
 
