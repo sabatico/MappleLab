@@ -115,6 +115,25 @@ def overview():
     Admin operational overview: all users and their running/stopped/archived VMs
     with status-aware action controls.
     """
+    users, grouped, status_groups, op_snapshots = _overview_context()
+    has_async_ops = any(
+        v.status in ('pushing', 'pulling')
+        for u in users
+        for s in ('pushing', 'pulling')
+        for v in grouped.get(u.id, {}).get(s, [])
+    )
+    return render_template(
+        'admin/overview.html',
+        users=users,
+        grouped=grouped,
+        status_groups=status_groups,
+        op_snapshots=op_snapshots,
+        has_async_ops=has_async_ops,
+    )
+
+
+def _overview_context():
+    """Build overview context (users, grouped, op_snapshots) after advancing async ops."""
     users = User.query.order_by(User.created_at.desc()).all()
     status_groups = ('running', 'stopped', 'archived', 'failed', 'pushing', 'pulling')
     vm_rows = (
@@ -124,8 +143,6 @@ def overview():
         .order_by(VM.user_id.asc(), VM.name.asc())
         .all()
     )
-
-    # Advance async ops (including gold push completion) before rendering.
     for vm in vm_rows:
         if vm.status in ('pushing', 'pulling') and vm.node:
             try:
@@ -133,16 +150,10 @@ def overview():
                     db.session.commit()
             except TartAPIError:
                 pass
-
-    grouped = {
-        user.id: {status: [] for status in status_groups}
-        for user in users
-    }
+    grouped = {u.id: {s: [] for s in status_groups} for u in users}
     for vm in vm_rows:
-        grouped.setdefault(vm.user_id, {status: [] for status in status_groups})
+        grouped.setdefault(vm.user_id, {s: [] for s in status_groups})
         grouped[vm.user_id][vm.status].append(vm)
-
-    # One-time snapshot of async op status for in-progress rows.
     op_snapshots = {}
     for vm in vm_rows:
         if vm.status not in ('pushing', 'pulling') or not vm.node:
@@ -158,9 +169,17 @@ def overview():
             }
         except TartAPIError:
             op_snapshots[vm.id] = {'stage': 'Node unreachable'}
+    return users, grouped, status_groups, op_snapshots
 
+
+@bp.route('/overview/partial')
+@login_required
+@admin_required
+def overview_partial():
+    """HTMX-polled partial: advance async ops and return updated overview body."""
+    users, grouped, status_groups, op_snapshots = _overview_context()
     return render_template(
-        'admin/overview.html',
+        'admin/_partials/overview_body.html',
         users=users,
         grouped=grouped,
         status_groups=status_groups,

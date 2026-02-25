@@ -19,10 +19,19 @@ def trigger_gold_distribution(gold_name):
     """
     gold = GoldImage.query.filter_by(name=gold_name).first()
     if not gold:
-        logger.warning("trigger_gold_distribution: gold image %r not found", gold_name)
+        logger.warning(
+            "trigger_gold_distribution: gold image %r not found (GoldImage record missing?). "
+            "Retry capture after fixing the VM state.",
+            gold_name,
+        )
         return False
 
     nodes = Node.query.filter_by(active=True).all()
+    logger.info(
+        "trigger_gold_distribution: starting distribution of %r to %d node(s)",
+        gold_name,
+        len(nodes),
+    )
     for node in nodes:
         gn = GoldImageNode.query.filter_by(
             gold_image_id=gold.id,
