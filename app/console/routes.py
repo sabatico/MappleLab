@@ -6,6 +6,14 @@ from flask import render_template, redirect, url_for, flash, current_app, reques
 from flask_login import login_required, current_user
 from urllib.parse import quote
 from simple_websocket.errors import ConnectionClosed
+
+try:
+    from websocket._exceptions import WebSocketConnectionClosedException
+except ImportError:
+    class WebSocketConnectionClosedException(Exception):
+        """Dummy when websocket-client structure differs; real one used for graceful disconnect handling."""
+        pass
+
 from app.console import bp
 from app.models import VM
 from app.tart_client import TartAPIError
@@ -347,6 +355,11 @@ def console_ws(ws, vm_name):
                     e.reason,
                     e.message,
                 )
+            except WebSocketConnectionClosedException:
+                logger.info(
+                    "console_ws(%s) backend connection closed during send (VM may have been stopped)",
+                    vm_name,
+                )
             except Exception:
                 logger.exception("console_ws(%s) browser->tunnel bridge error", vm_name)
             finally:
@@ -403,6 +416,11 @@ def console_ws(ws, vm_name):
                             vm_name,
                             metrics['first_tunnel_to_browser_ms'],
                         )
+        except WebSocketConnectionClosedException:
+            logger.info(
+                "console_ws(%s) backend connection closed (VM may have been stopped)",
+                vm_name,
+            )
         except Exception:
             logger.exception("console_ws(%s) tunnel->browser bridge error", vm_name)
         finally:
