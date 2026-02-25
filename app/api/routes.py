@@ -360,7 +360,7 @@ def vm_operation(vm_name):
 def _advance_gold_image_node(gn):
     """
     Poll agent for image pull status and update GoldImageNode.
-    Returns True if status changed.
+    Returns True if status or progress changed.
     """
     if gn.status != 'pulling' or not gn.op_key or not gn.gold_image:
         return False
@@ -382,6 +382,23 @@ def _advance_gold_image_node(gn):
         gn.status_detail = (op or {}).get('error', 'Unknown error')
         gn.completed_at = datetime.utcnow()
         return True
+    # Still pulling: update progress for display (GB pulled / GB total (%))
+    transferred = (op or {}).get('transferred_gb')
+    total = (op or {}).get('total_gb')
+    pct = (op or {}).get('progress_pct')
+    if transferred is not None or total is not None or pct is not None:
+        parts = []
+        if total is not None:
+            x = transferred if transferred is not None else 0
+            parts.append(f'{x:.1f} / {total:.1f} GB')
+        elif transferred is not None:
+            parts.append(f'{transferred:.1f} GB')
+        if pct is not None:
+            parts.append(f'({int(pct)}%)')
+        new_detail = ' '.join(parts) if parts else None
+        if new_detail != gn.status_detail:
+            gn.status_detail = new_detail
+            return True
     return False
 
 
