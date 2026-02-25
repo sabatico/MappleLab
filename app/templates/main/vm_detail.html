@@ -81,7 +81,7 @@
                     {% from '_macros/action_buttons.html' import
                         vm_btn_console, vm_btn_download_vncloc, vm_btn_download_vnc, vm_btn_stop, vm_btn_save_shutdown,
                         vm_btn_save, vm_btn_start, vm_btn_recover_start, vm_btn_resume, vm_btn_repull,
-                        vm_btn_disconnect, vm_btn_delete %}
+                        vm_btn_disconnect, vm_btn_delete, vm_btn_make_gold %}
                     {# Running: Console + Stop + Save & Shutdown #}
                     {% if vm.status == 'running' %}
                     {{ vm_btn_console(url_for('console.vnc', vm_name=vm.name), size='') }}
@@ -89,11 +89,17 @@
                     {{ vm_btn_download_vnc(url_for('console.download_vnc', vm_name=vm.name), size='') }}
                     {{ vm_btn_stop(url_for('main.stop_vm', vm_name=vm.name), vm.name, size='') }}
                     {{ vm_btn_save_shutdown(url_for('main.save_vm', vm_name=vm.name), vm.name, size='') }}
+                    {% if current_user.is_admin %}
+                    {{ vm_btn_make_gold(url_for('admin.make_gold_image', vm_id=vm.id), size='') }}
+                    {% endif %}
                     {% endif %}
 
                     {# Stopped: Start #}
                     {% if vm.status == 'stopped' and vm.node %}
                     {{ vm_btn_start(url_for('main.start_vm', vm_name=vm.name), size='') }}
+                    {% if current_user.is_admin %}
+                    {{ vm_btn_make_gold(url_for('admin.make_gold_image', vm_id=vm.id), size='') }}
+                    {% endif %}
                     {% endif %}
                     {# Failed: Recover & Start or Re-Pull #}
                     {% if vm.status == 'failed' and vm.node and not vm.registry_tag %}
