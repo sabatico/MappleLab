@@ -74,7 +74,9 @@
                     <td>{{ item.vm_name }}</td>
                     <td>
                         {% set status = (item.vm_status or '') %}
-                        {% if status == 'running' %}
+                        {% if status == 'gold_image' %}
+                        <span class="badge bg-primary">Gold Image</span>
+                        {% elif status == 'running' %}
                         <span class="badge bg-success">Running</span>
                         {% elif status == 'stopped' %}
                         <span class="badge bg-secondary">Stopped</span>

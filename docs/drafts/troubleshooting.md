@@ -77,3 +77,18 @@ If node cannot pull registry artefacts despite network access:
 
 - Check Local Network privacy permissions for runtime process
 - Trigger and accept local-network permission prompt on node
+
+## TLS Error on tart pull (Re-pull / Resume / Gold Image Distribution)
+
+Symptoms:
+
+- `tart pull failed: Error: A TLS error caused the secure connection to fail.`
+- Re-pull, Resume, or gold image distribution fails
+
+Cause: Registry uses HTTPS with a self-signed or untrusted certificate. TART validates TLS by default.
+
+Actions:
+
+1. **Use `--insecure` for tart pull** — On the node, set `REGISTRY_INSECURE=true` in the tart_agent `.env` (or equivalent). The agent should pass `--insecure` to `tart pull` when this is set. See `tart_agent` docs.
+2. **Use HTTP registry** — If the registry is on the LAN and TLS is not required, run it over HTTP (e.g. `REGISTRY_URL=http://192.168.1.195:5001/v2/`).
+3. **Fix TLS on registry** — Use a valid certificate (e.g. Let's Encrypt) or add the registry CA to the node's trust store.

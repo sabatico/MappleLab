@@ -181,7 +181,10 @@ def _vm_lookup_by_sanitized_user_vm():
 def classify_registry_items(registry_url):
     """
     Classify registry inventory into trackable and orphaned based on SQL linkage.
+    Trackable includes: VM artefacts (user/vm namespace) and Gold Images (gold-images/name).
     """
+    from app.models import GoldImage
+
     items = list_registry_items(registry_url)
     lookup = _vm_lookup_by_sanitized_user_vm()
     trackable = []
@@ -196,6 +199,32 @@ def classify_registry_items(registry_url):
             continue
         namespace = parts[0]
         image = parts[-1]
+
+        # Gold images: gold-images/<name>
+        if namespace == 'gold-images':
+            gold = GoldImage.query.filter_by(name=image).first()
+            if gold:
+                enriched = dict(item)
+                enriched.update({
+                    'item_type': 'gold_image',
+                    'user_email': '—',
+                    'user_name': None,
+                    'vm_name': gold.name,
+                    'vm_status': 'gold_image',
+                    'vm_id': gold.id,
+                    'cleanup_status': None,
+                    'cleanup_last_error': None,
+                })
+                trackable.append(enriched)
+            else:
+                orphan = dict(item)
+                orphan['orphan_reason'] = (
+                    f'Gold image repo gold-images/{image} has no matching GoldImage record'
+                )
+                orphaned.append(orphan)
+            continue
+
+        # VM artefacts: user/vm namespace
         matched = lookup.get((namespace, image), [])
         if matched:
             # Prefer records that are likely lifecycle-relevant for stored artefacts.
@@ -204,6 +233,7 @@ def classify_registry_items(registry_url):
             user, vm = matched[0]
             enriched = dict(item)
             enriched.update({
+                'item_type': 'vm',
                 'user_email': user.email or user.username,
                 'user_name': user.username,
                 'vm_name': vm.name,
