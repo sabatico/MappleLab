@@ -81,7 +81,7 @@ def create_app(config_class=None):
     # --- Create DB tables (no-op if already exist) ---
     from app.extensions import db
     with app.app_context():
-        from app.models import User, VM, Node, AppSettings  # noqa: F401
+        from app.models import User, VM, Node, AppSettings, GoldImage, GoldImageNode  # noqa: F401
         db.create_all()
         _ensure_sqlite_columns(app)
         # Security hardening: scrub legacy plaintext SMTP passwords from DB.

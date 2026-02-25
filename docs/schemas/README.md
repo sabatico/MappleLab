@@ -9,6 +9,7 @@ This folder contains presentation-ready architecture diagrams in Mermaid format.
 Latest updates include:
 - native `.vncloc` direct TCP console path
 - admin usage analytics coverage in portal structure diagrams
+- gold image management in portal structure (admin backend)
 
 ## PPT Usage
 

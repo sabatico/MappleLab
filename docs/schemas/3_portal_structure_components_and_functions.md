@@ -28,6 +28,7 @@ flowchart TB
         UsersMgmt[User Management and Invites]
         QuotaMgmt[Quota and Role Management]
         NodesMgmt[Nodes List Add Activate Deactivate Delete]
+        GoldImagesPage[Gold Images Capture and Distribution]
         RegistryPage[Registry Storage and Orphan Cleanup]
         UsagePage[Usage Analytics VM and VNC Time]
         SettingsPage[SMTP and Platform Settings]
@@ -58,11 +59,14 @@ flowchart TB
     AdminDashboard --> UsersMgmt
     AdminDashboard --> QuotaMgmt
     AdminDashboard --> NodesMgmt
+    AdminDashboard --> GoldImagesPage
     AdminDashboard --> RegistryPage
     AdminDashboard --> UsagePage
     AdminDashboard --> SettingsPage
 
     CreateVmFlow --> VmEngine
+    GoldImagesPage --> VmEngine
+    GoldImagesPage --> RegistryService
     StartStopFlow --> VmEngine
     ArchiveResumeFlow --> VmEngine
     MigrateFlow --> VmEngine

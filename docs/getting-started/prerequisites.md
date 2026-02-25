@@ -32,6 +32,16 @@ brew --version
 
 You should see a version number. If the command is not found, follow Homebrew's post-install instructions to add it to your PATH.
 
+OPTIONAL 
+```bash
+echo >> /Users/admin/.zprofile
+echo 'eval "$(/opt/homebrew/bin/brew shellenv zsh)"' >> /Users/admin/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv zsh)"
+```
+
+
+
+
 ---
 
 ## 2. Install Python 3.10+
@@ -47,10 +57,32 @@ python3 --version
 ```
 
 Expected output: `Python 3.12.x` (or 3.10+).
+IF the version is different, perform this:
+Open your shell configuration file (e.g., ~/.zshrc if you are using Zsh, which is the macOS default, or ~/.bash_profile if you are using Bash) using a text editor like nano:
+bash
+nano ~/.zshrc
+# or nano ~/.bash_profile
+Add the Homebrew Python libexec/bin directory to the beginning of your PATH. This ensures Homebrew's symlinks are found before the system's Python.Add the following line to the top of the file:
+bash
+export PATH="/opt/homebrew/opt/python@3.12/libexec/bin:$PATH"
+Note: The path /opt/homebrew/opt/python@3.12/libexec/bin is where Homebrew installs unversioned symlinks like python3 pointing to python3.12.
+Save the file and exit the editor.
+In nano, press Ctrl + O to save, then Enter to confirm the filename, and Ctrl + X to exit.
+Reload your shell configuration to apply the changes in your current terminal session:
+bash
+source ~/.zshrc
+# or source ~/.bash_profile
+Verify the change by checking the Python version again:
+bash
+which python3
+python3 --version
+
+
+
 
 ---
 
-## 3. Install Docker and Colima
+## 3. Install Docker and Colima (MANAGER ONLY)
 
 Colima is a lightweight Docker engine for macOS. The Docker CLI talks to it.
 
@@ -75,7 +107,7 @@ Expected output: an empty table with headers. No errors.
 
 ---
 
-## 4. Install TART on Each Node Mac
+## 4. Install TART on Each Node Mac (NODE ONLY)
 
 On **each node Mac**, open Terminal and run:
 

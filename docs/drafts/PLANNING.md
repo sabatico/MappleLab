@@ -1,6 +1,6 @@
-# Orchard UI — Full Architecture & Implementation Plan
+# MAppleLab — Full Architecture & Implementation Plan
 
-> **Purpose**: This document contains every detail a developer agent needs to implement the Orchard UI project from scratch — architecture, file structure, pseudocode, API contracts, and integration specifics.
+> **Purpose**: This document contains every detail a developer agent needs to implement the MAppleLab project from scratch — architecture, file structure, pseudocode, API contracts, and integration specifics.
 
 ---
 
@@ -1253,7 +1253,7 @@ def vm_events(vm_name):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Orchard UI{% endblock %}</title>
+    <title>{% block title %}MAppleLab{% endblock %}</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
@@ -1272,7 +1272,7 @@ def vm_events(vm_name):
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
-                <i class="bi bi-pc-display"></i> Orchard UI
+                <i class="bi bi-pc-display"></i> MAppleLab
             </a>
             <button class="navbar-toggler" type="button"
                     data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -1364,7 +1364,7 @@ def vm_events(vm_name):
 ```html
 {% extends "base.html" %}
 
-{% block title %}Dashboard — Orchard UI{% endblock %}
+{% block title %}Dashboard — MAppleLab{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1477,7 +1477,7 @@ def vm_events(vm_name):
 ```html
 {% extends "base.html" %}
 
-{% block title %}{{ vm.name }} — Orchard UI{% endblock %}
+{% block title %}{{ vm.name }} — MAppleLab{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
@@ -1587,7 +1587,7 @@ def vm_events(vm_name):
 ```html
 {% extends "base.html" %}
 
-{% block title %}Create VM — Orchard UI{% endblock %}
+{% block title %}Create VM — MAppleLab{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
@@ -1674,7 +1674,7 @@ def vm_events(vm_name):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Console: {{ vm_name }} — Orchard UI</title>
+    <title>Console: {{ vm_name }} — MAppleLab</title>
     <style>
         /* Full-page layout — no base.html, maximum screen real estate */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1834,7 +1834,7 @@ document.body.addEventListener('htmx:responseError', (evt) => {
 
 ```javascript
 /**
- * console.js — noVNC integration for Orchard UI.
+ * console.js — noVNC integration for MAppleLab.
  *
  * ES module — deferred by default, no DOMContentLoaded wrapper needed.
  * Config is injected from Flask via window.VNC_CONFIG.

@@ -88,6 +88,12 @@
 </a>
 {% endmacro %}
 
+{% macro vm_btn_make_gold(url, size='sm') %}
+<a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-warning me-1" title="Capture as Gold Image">
+    <i class="bi bi-award"></i> Gold
+</a>
+{% endmacro %}
+
 {% macro vm_btn_detail(url, size='sm') %}
 <a href="{{ url }}" class="btn {% if size %}btn-{{ size }}{% endif %} btn-outline-info me-1" title="View Details">
     <i class="bi bi-info-circle"></i>

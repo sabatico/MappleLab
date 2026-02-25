@@ -1,4 +1,4 @@
-# Orchard UI — Refurbished Architecture Plan
+# MAppleLab — Refurbished Architecture Plan
 # TART-Direct + Local Docker Registry + Multi-Node Mac Cloud
 
 > **Status**: ✅ Complete — implemented 2026-02-21

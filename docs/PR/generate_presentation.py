@@ -508,6 +508,7 @@ def build_presentation():
         "Node fleet management — add, activate, deactivate, drain",
         "Real-time node health monitoring (CPU, RAM, Disk, Slots)",
         "Cross-user operations dashboard for all VMs",
+        "Gold image management — capture VMs as reusable base images, distribute to nodes",
         "Usage analytics — VM lifetime & VNC session tracking",
         "Docker Registry storage management & orphan cleanup",
         "SMTP configuration for automated invite emails",

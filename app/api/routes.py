@@ -4,10 +4,11 @@ from flask import jsonify, current_app, request, render_template
 from flask_login import login_required, current_user
 from app.api import bp
 from app.extensions import db
-from app.models import VM, Node
+from app.models import VM, Node, GoldImage, GoldImageNode
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 from app.usage_events import ensure_vm_status_baseline, set_vm_status
+from app.utils import admin_required
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,17 @@ def _parse_migration_target(status_detail):
         return int(value.split(':', 1)[1])
     except (TypeError, ValueError):
         return None
+
+
+def _parse_gold_name(status_detail):
+    """Extract gold image name from status_detail 'gold:<name>' marker."""
+    value = (status_detail or '').strip()
+    if not value.startswith('gold:'):
+        return None
+    return value.split(':', 1)[1].strip() or None
+
+
+from app.gold_distribution import trigger_gold_distribution
 
 
 def _normalize_async_error(raw_error):
@@ -148,9 +160,18 @@ def _advance_async_op(vm):
     if op.get('status') == 'done':
         if vm.status == 'pushing':
             source_node = vm.node
-            target_node_id = _parse_migration_target(vm.status_detail)
-            if target_node_id:
-                target_node = Node.query.filter_by(id=target_node_id, active=True).first()
+            gold_name = _parse_gold_name(vm.status_detail)
+            if gold_name:
+                set_vm_status(vm, 'archived', source='api_poller', context='gold_push_done')
+                vm.node_id = None
+                vm.last_saved_at = datetime.utcnow()
+                vm.status_detail = None
+                _verify_vm_absent_on_node(source_node, vm.name, 'gold_push_done')
+                trigger_gold_distribution(gold_name)
+            else:
+                target_node_id = _parse_migration_target(vm.status_detail)
+                if target_node_id:
+                    target_node = Node.query.filter_by(id=target_node_id, active=True).first()
                 if not target_node:
                     set_vm_status(vm, 'archived', source='api_poller', context='migration_push_done_target_unavailable')
                     vm.node_id = None
@@ -170,13 +191,13 @@ def _advance_async_op(vm):
                     set_vm_status(vm, 'pulling', source='api_poller', context='migration_restore_started')
                     vm.node_id = target_node.id
                     vm.status_detail = None
-                _verify_vm_absent_on_node(source_node, vm.name, 'migration_push_done')
-            else:
-                set_vm_status(vm, 'archived', source='api_poller', context='archive_push_done')
-                vm.node_id = None
-                vm.last_saved_at = datetime.utcnow()
-                vm.status_detail = None
-                _verify_vm_absent_on_node(source_node, vm.name, 'archive_push_done')
+                    _verify_vm_absent_on_node(source_node, vm.name, 'migration_push_done')
+                else:
+                    set_vm_status(vm, 'archived', source='api_poller', context='archive_push_done')
+                    vm.node_id = None
+                    vm.last_saved_at = datetime.utcnow()
+                    vm.status_detail = None
+                    _verify_vm_absent_on_node(source_node, vm.name, 'archive_push_done')
         elif vm.status == 'pulling':
             set_vm_status(vm, 'running', source='api_poller', context='restore_done')
             vm.last_started_at = datetime.utcnow()
@@ -329,4 +350,57 @@ def vm_operation(vm_name):
         vm=vm,
         op=op,
         op_stage_label=_op_stage_label,
+    )
+
+
+def _advance_gold_image_node(gn):
+    """
+    Poll agent for image pull status and update GoldImageNode.
+    Returns True if status changed.
+    """
+    if gn.status != 'pulling' or not gn.op_key or not gn.gold_image:
+        return False
+    node = Node.query.get(gn.node_id)
+    if not node:
+        return False
+    try:
+        op = current_app.tart.get_image_op_status(node, gn.op_key)
+    except TartAPIError:
+        return False
+    status = (op or {}).get('status')
+    if status == 'done':
+        gn.status = 'ready'
+        gn.status_detail = None
+        gn.completed_at = datetime.utcnow()
+        return True
+    if status == 'error':
+        gn.status = 'failed'
+        gn.status_detail = (op or {}).get('error', 'Unknown error')
+        gn.completed_at = datetime.utcnow()
+        return True
+    return False
+
+
+@bp.route('/gold-images/<int:gold_id>/distribution')
+@login_required
+@admin_required
+def gold_image_distribution(gold_id):
+    """
+    HTMX-polled partial for gold image node distribution status.
+    Advances GoldImageNode status from agent poll, returns HTML.
+    """
+    gold = GoldImage.query.get_or_404(gold_id)
+    gold.nodes  # force load relationship
+
+    for gn in gold.nodes:
+        if gn.status == 'pulling':
+            try:
+                if _advance_gold_image_node(gn):
+                    db.session.commit()
+            except Exception:
+                pass
+
+    return render_template(
+        'admin/_partials/gold_image_distribution.html',
+        gold=gold,
     )

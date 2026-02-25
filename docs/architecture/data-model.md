@@ -33,6 +33,24 @@ Fields include:
 
 Stores runtime SMTP values used by admin settings UI.
 
+## GoldImage
+
+Admin-captured reusable base images. Fields include:
+
+- `name` (unique), `registry_tag` (e.g. `gold-images/<name>:latest`)
+- `base_image`, `disk_size_gb`, `description`, `source_vm_name`
+- `created_at`, `updated_at`, `created_by_id` (FK users)
+
+## GoldImageNode
+
+Per-node distribution status for each gold image. Fields include:
+
+- `gold_image_id`, `node_id`
+- `status`: `pending`, `pulling`, `ready`, `failed`
+- `status_detail`, `op_key`, `started_at`, `completed_at`
+
+Unique constraint on `(gold_image_id, node_id)`. Cascade delete from GoldImage.
+
 ## VM Status Vocabulary
 
 - `creating`, `running`, `stopped`

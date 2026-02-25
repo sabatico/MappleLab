@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Make Gold Image — MAppleLab{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('admin.overview') }}">Dashboard</a></li>
+        <li class="breadcrumb-item active">Make Gold Image</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                {% from '_macros/icons.html' import icon_gold_image %}
+                <h4 class="mb-0">{{ icon_gold_image() }} Capture as Gold Image</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Capture VM <strong>{{ vm.name }}</strong> as a reusable base image.
+                    The VM will be stopped, pushed to the registry, and archived.
+                    The image will be distributed to all nodes for fast VM creation.
+                </p>
+                <div class="mb-3 p-2 bg-dark rounded">
+                    <small class="text-muted">VM: {{ vm.name }}</small><br>
+                    <small class="text-muted">Node: {{ vm.node.name if vm.node else '—' }}</small><br>
+                    <small class="text-muted">Disk: {{ '%.1f GB'|format(vm.disk_size_gb) if vm.disk_size_gb else '—' }}</small>
+                </div>
+                <form method="POST" action="{{ url_for('admin.make_gold_image', vm_id=vm.id) }}">
+                    <div class="mb-3">
+                        <label for="gold_name" class="form-label">Gold Image Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="gold_name" name="gold_name"
+                               required placeholder="e.g., dev-base-sonoma"
+                               pattern="[a-zA-Z0-9][a-zA-Z0-9._-]*"
+                               value="{{ gold_name or '' }}">
+                        <div class="form-text">
+                            Unique name. Re-using the same name overwrites the previous gold image.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (optional)</label>
+                        <input type="text" class="form-control" id="description" name="description"
+                               placeholder="e.g., macOS Sonoma with dev tools"
+                               value="{{ description or '' }}">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning"
+                                onclick="return confirm('Capture VM \'{{ vm.name }}\' as Gold Image? This will stop and archive the VM.');">
+                            {{ icon_gold_image() }} Capture
+                        </button>
+                        <a href="{{ url_for('admin.overview') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

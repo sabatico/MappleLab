@@ -1,0 +1,34 @@
+<table class="table table-sm table-hover mb-0 align-middle">
+    <thead class="table-dark">
+        <tr>
+            <th>Node</th>
+            <th>Status</th>
+            <th>Detail</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for gn in gold.nodes %}
+        <tr>
+            <td>{{ gn.node.name if gn.node else '—' }}</td>
+            <td>
+                {% if gn.status == 'ready' %}
+                <span class="badge bg-success">Ready</span>
+                {% elif gn.status == 'pulling' %}
+                <span class="badge bg-info text-dark">Pulling</span>
+                {% elif gn.status == 'failed' %}
+                <span class="badge bg-danger">Failed</span>
+                {% elif gn.status == 'pending' %}
+                <span class="badge bg-secondary">Pending</span>
+                {% else %}
+                <span class="badge bg-dark">{{ gn.status or '—' }}</span>
+                {% endif %}
+            </td>
+            <td class="small">{{ gn.status_detail or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="3" class="text-center text-muted py-2">No nodes configured.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

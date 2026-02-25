@@ -6,7 +6,7 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import login_required, current_user
 from app.main import bp
 from app.extensions import db
-from app.models import VM, Node
+from app.models import VM, Node, GoldImage
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
 from app.usage_events import ensure_vm_status_baseline, set_vm_status
@@ -325,14 +325,23 @@ def dashboard():
     return render_template('main/dashboard.html', vms=vms, quota=quota)
 
 
+def _create_vm_template_context():
+    """Context for create_vm form (GET and validation re-renders)."""
+    gold_images = GoldImage.query.order_by(GoldImage.updated_at.desc()).all()
+    return {
+        'images': current_app.config['TART_IMAGES'],
+        'gold_images': gold_images,
+    }
+
+
 @bp.route('/vms/create', methods=['GET', 'POST'])
 @login_required
 def create_vm():
     """GET: Show the create VM form. POST: Create VM via TART agent."""
+    ctx = _create_vm_template_context()
     if request.method == 'GET':
         logger.debug("create_vm() GET — rendering form")
-        return render_template('main/create_vm.html',
-                               images=current_app.config['TART_IMAGES'])
+        return render_template('main/create_vm.html', **ctx)
 
     name = request.form.get('name', '').strip()
     image = request.form.get('image', '').strip()
@@ -343,24 +352,20 @@ def create_vm():
 
     if cpu < 1 or cpu > MAX_VM_CPU:
         flash(f'CPU must be between 1 and {MAX_VM_CPU}.', 'warning')
-        return render_template('main/create_vm.html',
-                               images=current_app.config['TART_IMAGES'])
+        return render_template('main/create_vm.html', **ctx)
     if memory < 1024 or memory > MAX_VM_MEMORY_MB:
         flash(f'Memory must be between 1024 and {MAX_VM_MEMORY_MB} MB.', 'warning')
-        return render_template('main/create_vm.html',
-                               images=current_app.config['TART_IMAGES'])
+        return render_template('main/create_vm.html', **ctx)
 
     logger.info("create_vm() POST — name=%r, image=%r, cpu=%r, memory=%r",
                 name, image, cpu, memory)
 
     if not name:
         flash('VM name is required.', 'warning')
-        return render_template('main/create_vm.html',
-                               images=current_app.config['TART_IMAGES'])
+        return render_template('main/create_vm.html', **ctx)
     if not image:
         flash('Image is required.', 'warning')
-        return render_template('main/create_vm.html',
-                               images=current_app.config['TART_IMAGES'])
+        return render_template('main/create_vm.html', **ctx)
 
     if _active_vm_count_for_user(current_user.id) >= (current_user.max_active_vms or 1):
         flash(f'Active VM limit ({current_user.max_active_vms}) reached.', 'danger')

@@ -125,7 +125,7 @@ The node should appear in the table. The **Health** column shows CPU, RAM, disk,
 
 1. Click **My VMs** in the navigation bar
 2. Click **Create VM**
-3. Select a **Base Image** from the dropdown (for example `ghcr.io/cirruslabs/macos-sonoma-base:latest`)
+3. Select a **Base Image** from the dropdown — choose from **Gold Images** (admin-captured) or **Base Images** (for example `ghcr.io/cirruslabs/macos-sonoma-base:latest`)
 4. Leave CPU and Memory at their defaults, or increase them
 5. Give the VM a name (for example `my-first-vm`)
 6. Click **Create**
@@ -167,6 +167,7 @@ The dashboard shows the VM with status `creating`, then `running` once ready. Th
 ## Next Steps
 
 - Add more users: [User Management](../administration/user-management.md)
+- For admins: capture VMs as gold images: [Gold Images](../administration/gold-images.md)
 - Add more nodes: repeat Step 6 for each node Mac
 - Set up production TLS: [Reverse Proxy](../administration/reverse-proxy.md)
 - Run as a background service: [Deployment](../administration/deployment.md)

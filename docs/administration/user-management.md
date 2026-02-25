@@ -91,6 +91,14 @@ When a user hits a quota, the relevant action is blocked with an error message i
 - The VM must be in `running` state and have an assigned node.
 - Admins can still inspect/operate cross-user VMs in admin views, but `.vncloc` download ownership checks remain strict.
 
+## Gold Images
+
+- Admin navbar includes **Gold Images** (`/admin/gold-images`) for capturing VMs as reusable base images.
+- From **Dashboard**, click **Gold** on a running or stopped VM to capture it. The image is stored in `gold-images/<name>:latest` and distributed to all nodes.
+- Gold images appear in the Create VM dropdown for all users.
+
+See [Gold Images](gold-images.md) for full details.
+
 ## Admin Usage Page
 
 - Admin navbar includes **Usage** (`/admin/usage`) for cross-user VM/VNC time analytics.

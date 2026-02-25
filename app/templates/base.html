@@ -28,7 +28,7 @@
     </div>
 
     <!-- Navigation -->
-    {% from '_macros/icons.html' import icon_brand, icon_vms, icon_dashboard, icon_create_vm, icon_nodes, icon_usage, icon_registry_storage, icon_user, icon_users, icon_settings, icon_logout, icon_login %}
+    {% from '_macros/icons.html' import icon_brand, icon_vms, icon_dashboard, icon_create_vm, icon_nodes, icon_usage, icon_registry_storage, icon_gold_image, icon_user, icon_users, icon_settings, icon_logout, icon_login %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
@@ -71,6 +71,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin.registry_storage') }}">
                             {{ icon_registry_storage() }} Registry Storage
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.gold_images') }}">
+                            {{ icon_gold_image() }} Gold Images
                         </a>
                     </li>
                     {% endif %}

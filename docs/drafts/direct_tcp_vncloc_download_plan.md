@@ -1,6 +1,6 @@
 # Direct TCP `.vncloc` Download Plan
 
-## Goal (Implemented)
+## Goal
 
 Provide a downloadable, preconfigured macOS VNC launch file (`.vncloc`) for running VMs, using a direct TCP path that bypasses Flask/WebSocket relay overhead.
 
@@ -108,9 +108,7 @@ Options:
 
 ## Security Notes
 
-- Current implementation note: `.vncloc` generation embeds configured
-  `VNC_DEFAULT_USERNAME` / `VNC_DEFAULT_PASSWORD` in the `vnc://` URL when set.
-  Treat this as known security debt until tokenized/ephemeral credential flow is added.
+- Do not embed VNC password in `.vncloc`; allow client prompt at connect time.
 - Keep proxy mapping session-scoped and reclaim stale ports with timeout/cleanup.
 - Keep ownership checks strict (`@login_required` + VM owner validation).
 
@@ -140,20 +138,20 @@ Options:
 - [x] Add route `GET /console/<vm_name>/vncloc` in `app/console/routes.py`.
 - [x] Add UI button in `app/templates/main/vm_detail.html`.
 - [x] Stop direct proxies during disconnect/stop/delete flows (`main` + `admin` routes).
-- [x] Ensure existing browser console flow still works unchanged.
+- [ ] Ensure existing browser console flow still works unchanged.
 
 ### Phase B — Local Functional Verification
 
-- [x] Start manager locally with new code.
-- [x] Run/create a VM in `running` state.
-- [x] Open VM detail page and confirm `Download .vncloc` button appears only for running VM.
-- [x] Download file and verify:
-  - [x] extension is `.vncloc`
-  - [x] contents contain manager host + allocated direct proxy port
-  - [x] credentials are currently embedded when defaults are configured (known debt)
-- [x] Double-click on macOS and confirm Screen Sharing opens target.
-- [x] Confirm connection can be established through manager direct TCP proxy path.
-- [x] Validate data path performance qualitatively against browser noVNC.
+- [ ] Start manager locally with new code.
+- [ ] Run/create a VM in `running` state.
+- [ ] Open VM detail page and confirm `Download .vncloc` button appears only for running VM.
+- [ ] Download file and verify:
+  - [ ] extension is `.vncloc`
+  - [ ] contents contain manager host + allocated direct proxy port
+  - [ ] no password embedded in URL or file
+- [ ] Double-click on macOS and confirm Screen Sharing opens target.
+- [ ] Confirm VNC credential prompt appears client-side.
+- [ ] Validate data path performance qualitatively against browser noVNC.
 
 ### Phase C — Negative and Security Tests
 
@@ -222,10 +220,10 @@ Options:
 
 ### Phase J — Documentation Updates
 
-- [x] Add user guide section: how to use `.vncloc` and Screen Sharing.
-- [x] Add admin section: required open ports and network prerequisites.
-- [x] Add troubleshooting section:
-  - [x] connection timeout causes
-  - [x] ownership/authorization failures
-  - [x] node unreachable and port exhaustion scenarios
-- [x] Add security notes reflecting current implementation behavior.
+- [ ] Add user guide section: how to use `.vncloc` and Screen Sharing.
+- [ ] Add admin section: required open ports and network prerequisites.
+- [ ] Add troubleshooting section:
+  - [ ] connection timeout causes
+  - [ ] ownership/authorization failures
+  - [ ] node unreachable and port exhaustion scenarios
+- [ ] Add security notes: credentials are prompted client-side and not embedded.

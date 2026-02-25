@@ -160,17 +160,3 @@ flowchart TD
   wireAdminRoute --> renderUsageTab[RenderUsageTabUI]
   renderUsageTab --> testAndTune[TestBackfillAndTune]
 ```
-
-## Cross-Feature Note (Direct TCP `.vncloc`)
-
-- Usage metrics in this plan track browser websocket VNC sessions (`vm_vnc_sessions`).
-- Native `.vncloc` direct TCP sessions are currently not part of usage-session aggregation.
-- If native session accounting is required later, extend usage-event capture for `DirectTcpProxyManager` connect/disconnect intervals.
-
-## Implementation Reality Notes
-
-- Final UI route is `GET /admin/usage` with navbar entry, not an embedded tab under settings.
-- Aggregation scope is local, node-backed VMs only: `status in ('running','stopped')` and `node_id is not null`.
-- Warning thresholds are currently fixed in code:
-  - running without VNC: `8h`
-  - running with active websocket VNC: `4h`

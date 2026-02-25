@@ -96,6 +96,17 @@ class TartClient:
         """Poll in-progress async operation status."""
         return self._request('GET', node, f'/vms/{name}/op')
 
+    def pull_image(self, node, registry_tag, op_key, expected_disk_gb=None):
+        """Trigger async image pull on agent (pre-cache gold images). Poll get_image_op_status for progress."""
+        payload = {'registry_tag': registry_tag, 'op_key': op_key}
+        if expected_disk_gb is not None:
+            payload['expected_disk_gb'] = expected_disk_gb
+        return self._request('POST', node, '/images/pull', json=payload)
+
+    def get_image_op_status(self, node, op_key):
+        """Poll in-progress image pull operation status."""
+        return self._request('GET', node, f'/images/{op_key}/op')
+
     def get_vm_ip(self, node, name):
         result = self._request('GET', node, f'/vms/{name}/ip')
         return result.get('ip')

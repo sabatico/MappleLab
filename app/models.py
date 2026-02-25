@@ -124,3 +124,37 @@ class AppSettings(db.Model):
     smtp_from = db.Column(db.String(256), nullable=True)
     smtp_use_tls = db.Column(db.Boolean, default=True, nullable=False)
     smtp_use_ssl = db.Column(db.Boolean, default=False, nullable=False)
+
+
+class GoldImage(db.Model):
+    __tablename__ = 'gold_images'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), unique=True, nullable=False)
+    registry_tag = db.Column(db.String(256), nullable=False)
+    base_image = db.Column(db.String(256), nullable=True)
+    disk_size_gb = db.Column(db.Float, nullable=True)
+    description = db.Column(db.String(512), nullable=True)
+    source_vm_name = db.Column(db.String(128), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    nodes = db.relationship('GoldImageNode', backref='gold_image', lazy='select',
+                            cascade='all, delete-orphan')
+
+
+class GoldImageNode(db.Model):
+    __tablename__ = 'gold_image_nodes'
+    id = db.Column(db.Integer, primary_key=True)
+    gold_image_id = db.Column(db.Integer, db.ForeignKey('gold_images.id'), nullable=False)
+    node_id = db.Column(db.Integer, db.ForeignKey('nodes.id'), nullable=False)
+    # status: pending | pulling | ready | failed
+    status = db.Column(db.String(32), default='pending', nullable=False)
+    status_detail = db.Column(db.String(256), nullable=True)
+    op_key = db.Column(db.String(256), nullable=True)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    node = db.relationship('Node', backref='gold_image_nodes')
+
+    __table_args__ = (
+        db.UniqueConstraint('gold_image_id', 'node_id', name='uq_gold_image_node'),
+    )

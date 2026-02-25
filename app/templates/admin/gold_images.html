@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Gold Images — MAppleLab{% endblock %}
+
+{% block content %}
+{% from '_macros/icons.html' import icon_gold_image, icon_delete %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>{{ icon_gold_image() }} Gold Images</h2>
+</div>
+
+<p class="text-muted mb-4">
+    Reusable base images captured from VMs. Gold images are distributed to all nodes for fast VM creation.
+</p>
+
+{% for gold in gold_images %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <strong>{{ gold.name }}</strong>
+            {% if gold.description %}
+            <span class="text-muted ms-2">— {{ gold.description }}</span>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ url_for('admin.gold_image_redistribute', gold_id=gold.id) }}"
+                  style="display:inline-block;"
+                  onsubmit="return confirm('Re-distribute {{ gold.name }} to all nodes?');">
+                <button class="btn btn-sm btn-outline-primary">Re-Distribute</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.gold_image_delete', gold_id=gold.id) }}"
+                  style="display:inline-block;"
+                  onsubmit="return confirm('Delete gold image {{ gold.name }}? DB records will be removed. Registry artefact left for manual cleanup.');">
+                <button class="btn btn-sm btn-outline-danger">{{ icon_delete() }} Delete</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <small class="text-muted">Registry:</small>
+                <code>{{ gold.registry_tag }}</code>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">Base:</small>
+                {{ gold.base_image or '—' }}
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">Size:</small>
+                {{ '%.1f GB'|format(gold.disk_size_gb) if gold.disk_size_gb else '—' }}
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">Source:</small>
+                {{ gold.source_vm_name or '—' }}
+            </div>
+        </div>
+        <div class="mb-2">
+            <small class="text-muted">Node distribution (updates every 5s):</small>
+        </div>
+        <div id="gold-dist-{{ gold.id }}"
+             hx-get="{{ url_for('api.gold_image_distribution', gold_id=gold.id) }}"
+             hx-trigger="load, every 5s"
+             hx-swap="innerHTML">
+            {% include 'admin/_partials/gold_image_distribution.html' %}
+        </div>
+    </div>
+    <div class="card-footer text-muted small">
+        Updated {{ gold.updated_at.strftime('%Y-%m-%d %H:%M') if gold.updated_at else '—' }}
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        No gold images yet. Capture a running or stopped VM from the <a href="{{ url_for('admin.overview') }}">Dashboard</a>.
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

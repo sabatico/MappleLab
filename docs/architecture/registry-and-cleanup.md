@@ -7,6 +7,7 @@ MAppleLab uses a Docker registry as persistence for VM save/resume and migration
 - Save/archive: node pushes VM artefact to registry
 - Resume: node restores from registry artefact
 - Migration: save on source, restore on target
+- Gold images: admin captures VM to `gold-images/<name>:latest`, distributed to all nodes for fast VM creation
 
 ## Cleanup Strategy
 

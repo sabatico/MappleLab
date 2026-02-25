@@ -29,11 +29,12 @@
 - `app/admin/usage_metrics.py` admin usage aggregation for segmented lifetime analytics
 - `app/registry_inventory.py` registry cataloging
 - `app/registry_cleanup.py` cleanup helpers
+- `app/gold_distribution.py` gold image distribution to nodes
 
 ## Templates
 
 - `app/templates/main/`
-- `app/templates/admin/`
+- `app/templates/admin/` (includes `_partials/` for gold image distribution)
 - `app/templates/auth/`
 - `app/templates/console/`
 - `app/templates/nodes/`

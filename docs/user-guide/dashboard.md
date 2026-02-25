@@ -4,6 +4,7 @@
 
 - **My VMs**: personal VM list and actions
 - **Dashboard (admin)**: cross-user operational view
+- **Gold Images (admin)**: capture VMs as reusable base images, view distribution status
 - **Usage (admin)**: cross-user VM/VNC lifetime analytics
 
 ## VM Status Values
@@ -27,6 +28,7 @@ Depending on state, available actions include:
 - Start
 - Stop
 - Save/Archive
+- Gold (admin only: capture running/stopped VM as reusable base image)
 - Resume
 - Re-pull
 - Delete

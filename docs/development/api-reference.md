@@ -20,6 +20,7 @@ This file lists Flask routes by blueprint.
 - `GET /api/vms`
 - `GET /api/vms/<vm_name>/status`
 - `GET /api/vms/<vm_name>/operation`
+- `GET /api/gold-images/<gold_id>/distribution` (admin, HTMX partial for node distribution status)
 
 ## Console (`app/console/routes.py`)
 
@@ -39,6 +40,9 @@ This file lists Flask routes by blueprint.
 
 - `GET /admin/users`
 - `GET /admin/overview`
+- `GET /admin/gold-images`
+- `POST /admin/gold-images/<id>/redistribute`
+- `POST /admin/gold-images/<id>/delete`
 - `GET /admin/registry-storage`
 - `POST /admin/registry-storage/orphans/delete`
 - `POST /admin/users/create`
@@ -49,7 +53,7 @@ This file lists Flask routes by blueprint.
 - `POST /admin/settings/test-email`
 - `GET /admin/usage`
 - VM actions under `/admin/vms/<id>/*`:
-  - `start`, `stop`, `archive`, `resume`, `repull`, `delete`, `cleanup-retry`
+  - `start`, `stop`, `archive`, `make-gold`, `resume`, `repull`, `delete`, `cleanup-retry`
 
 ## Nodes (`app/nodes/routes.py`)
 

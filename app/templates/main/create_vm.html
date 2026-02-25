@@ -37,9 +37,20 @@
                         <label for="image" class="form-label">Image</label>
                         <select class="form-select" id="image" name="image" required>
                             <option value="">Select an image…</option>
-                            {% for img in images %}
-                            <option value="{{ img }}">{{ img }}</option>
-                            {% endfor %}
+                            {% if gold_images %}
+                            <optgroup label="Gold Images">
+                                {% for g in gold_images %}
+                                <option value="{{ g.registry_tag }}">
+                                    {{ g.name }}{% if g.description %} — {{ g.description[:50] }}{{ '…' if g.description|length > 50 else '' }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                            <optgroup label="Base Images">
+                                {% for img in images %}
+                                <option value="{{ img }}">{{ img }}</option>
+                                {% endfor %}
+                            </optgroup>
                         </select>
                         <div class="form-text">
                             TART VM image from OCI registry.

@@ -25,6 +25,7 @@ Manager also uses:
 - `DirectTcpProxyManager` for native `.vncloc` raw TCP proxy routing
 - Usage telemetry pipeline (`VMStatusEvent`, `VMVncSession`, `usage_metrics`) for admin analytics
 - Registry inventory/cleanup services for artefact management
+- Gold image management — capture VMs as reusable base images, distribute to nodes, expose in Create VM dropdown
 
 ## Design Goals
 

@@ -12,9 +12,13 @@ creating -> running -> stopped -> pushing -> archived -> pulling -> running
 ## Create VM
 
 - Open **Create VM**
-- Select base image
+- Select base image (Gold Images or Base Images optgroup)
 - Set optional CPU/memory
 - Submit and wait for `running`
+
+## Gold Images (Admin)
+
+Admins can capture a running or stopped VM as a **Gold Image** — a reusable base image stored in `gold-images/<name>:latest`. The VM is stopped, pushed to the registry, and archived. The image is distributed to all nodes for fast VM creation. Gold images appear in the Create VM dropdown under "Gold Images".
 
 ## Start and Stop
 

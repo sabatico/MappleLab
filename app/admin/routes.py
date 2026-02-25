@@ -1,4 +1,5 @@
 import logging
+import re
 import secrets
 from datetime import datetime
 from flask import render_template, redirect, url_for, flash, request, current_app
@@ -6,13 +7,15 @@ from flask_login import login_required
 from sqlalchemy.orm import selectinload
 from app.admin import bp
 from app.extensions import db, bcrypt
-from app.models import User, VM, AppSettings
+from app.models import User, VM, AppSettings, GoldImage
 from app.registry_inventory import storage_breakdown, delete_orphan_by_digest
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
+from app.api.routes import _advance_async_op
 from app.utils import admin_required
 from app.email import send_invite_email, send_test_email
 from app.usage_events import ensure_vm_status_baseline, set_vm_status
+from app.gold_distribution import trigger_gold_distribution
 from app.admin.usage_metrics import build_usage_by_user
 from app.main.routes import (
     _sanitize_registry_tag,
@@ -20,6 +23,7 @@ from app.main.routes import (
     _agent_vm_name,
     _agent_vm_size_on_disk_gb,
     _verify_vm_absent_on_node,
+    _registry_authority_from_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +60,17 @@ def _redirect_overview():
 
 def _redirect_registry_storage():
     return redirect(request.referrer or url_for('admin.registry_storage'))
+
+
+def _gold_registry_tag(name):
+    """Build registry tag for gold image: gold-images/<name>:latest."""
+    authority = _registry_authority_from_config()
+    if not authority:
+        return None
+    safe = re.sub(r'[^a-z0-9]+', '-', (name or '').strip().lower())
+    safe = re.sub(r'-{2,}', '-', safe).strip('-') or 'gold'
+    raw = f'{authority}/gold-images/{safe}:latest'
+    return _sanitize_registry_tag(raw)
 
 
 def _upsert_settings_from_form():
@@ -109,6 +124,15 @@ def overview():
         .order_by(VM.user_id.asc(), VM.name.asc())
         .all()
     )
+
+    # Advance async ops (including gold push completion) before rendering.
+    for vm in vm_rows:
+        if vm.status in ('pushing', 'pulling') and vm.node:
+            try:
+                if _advance_async_op(vm):
+                    db.session.commit()
+            except TartAPIError:
+                pass
 
     grouped = {
         user.id: {status: [] for status in status_groups}
@@ -372,6 +396,88 @@ def resume_vm(vm_id):
     return _redirect_overview()
 
 
+@bp.route('/vms/<int:vm_id>/make-gold', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def make_gold_image(vm_id):
+    vm = VM.query.get_or_404(vm_id)
+    ensure_vm_status_baseline(vm, source='system', context='admin_make_gold_baseline')
+    if vm.status not in ('running', 'stopped'):
+        flash(f'VM "{vm.name}" must be running or stopped to capture as gold image.', 'warning')
+        return _redirect_overview()
+    if not vm.node:
+        flash(f'VM "{vm.name}" has no assigned node.', 'warning')
+        return _redirect_overview()
+
+    if request.method == 'GET':
+        return render_template(
+            'admin/make_gold_image.html',
+            vm=vm,
+        )
+
+    gold_name = request.form.get('gold_name', '').strip()
+    description = request.form.get('description', '').strip() or None
+    if not gold_name:
+        flash('Gold image name is required.', 'warning')
+        return render_template(
+            'admin/make_gold_image.html',
+            vm=vm,
+            gold_name=gold_name,
+            description=description,
+        )
+
+    registry_tag = _gold_registry_tag(gold_name)
+    if not registry_tag:
+        flash('Could not build registry tag. Check REGISTRY_URL configuration.', 'danger')
+        return _redirect_overview()
+
+    ok, required_gb, available_gb, reason = _check_registry_space_for_save(vm)
+    if not ok:
+        flash(reason, 'danger')
+        return _redirect_overview()
+
+    size_info = None
+    try:
+        node_vms = current_app.tart.list_vms(vm.node)
+        size_info = next((item for item in node_vms if _agent_vm_name(item) == vm.name), None)
+    except TartAPIError:
+        pass
+
+    try:
+        vm.disk_size_gb = _agent_vm_size_on_disk_gb(size_info) or vm.disk_size_gb
+        current_app.tart.save_vm(vm.node, vm.name, registry_tag, expected_disk_gb=vm.disk_size_gb)
+        set_vm_status(vm, 'pushing', source='ui', context='admin_make_gold')
+        vm.status_detail = f'gold:{gold_name}'
+        db.session.commit()
+
+        gold = GoldImage.query.filter_by(name=gold_name).first()
+        if gold:
+            gold.registry_tag = registry_tag
+            gold.base_image = vm.base_image
+            gold.disk_size_gb = vm.disk_size_gb
+            gold.description = description
+            gold.source_vm_name = vm.name
+            gold.updated_at = datetime.utcnow()
+            gold.created_by_id = current_user.id
+        else:
+            gold = GoldImage(
+                name=gold_name,
+                registry_tag=registry_tag,
+                base_image=vm.base_image,
+                disk_size_gb=vm.disk_size_gb,
+                description=description,
+                source_vm_name=vm.name,
+                created_by_id=current_user.id,
+            )
+            db.session.add(gold)
+        db.session.commit()
+
+        flash(f'Gold image "{gold_name}" capture started. VM will be archived when push completes.', 'info')
+    except TartAPIError as e:
+        flash(f'Failed to start gold capture for "{vm.name}": {e}', 'danger')
+    return _redirect_overview()
+
+
 @bp.route('/vms/<int:vm_id>/repull', methods=['POST'])
 @login_required
 @admin_required
@@ -529,6 +635,38 @@ def delete_user(user_id):
     db.session.commit()
     flash('User deleted.', 'success')
     return redirect(url_for('admin.users'))
+
+
+@bp.route('/gold-images')
+@login_required
+@admin_required
+def gold_images():
+    gold_images_list = GoldImage.query.order_by(GoldImage.updated_at.desc()).all()
+    return render_template('admin/gold_images.html', gold_images=gold_images_list)
+
+
+@bp.route('/gold-images/<int:gold_id>/redistribute', methods=['POST'])
+@login_required
+@admin_required
+def gold_image_redistribute(gold_id):
+    gold = GoldImage.query.get_or_404(gold_id)
+    if trigger_gold_distribution(gold.name):
+        flash(f'Re-distribution started for "{gold.name}".', 'info')
+    else:
+        flash(f'Could not start re-distribution for "{gold.name}".', 'warning')
+    return redirect(url_for('admin.gold_images'))
+
+
+@bp.route('/gold-images/<int:gold_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def gold_image_delete(gold_id):
+    gold = GoldImage.query.get_or_404(gold_id)
+    name = gold.name
+    db.session.delete(gold)
+    db.session.commit()
+    flash(f'Gold image "{name}" deleted. Registry artefact left for manual cleanup.', 'success')
+    return redirect(url_for('admin.gold_images'))
 
 
 @bp.route('/settings', methods=['GET', 'POST'])

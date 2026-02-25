@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "2489ad51-f4bb-466b-9b0f-5e5e7d05f486",
-		"name": "Orchard TART",
+		"name": "MAppleLab TART",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "42477136"
 	},
@@ -270,27 +270,6 @@
 					]
 				},
 				"description": "Generated from cURL: curl -i -X POST http://192.168.1.195:6120/v1/vms \\\n     -H \"Content-Type: application/json\" \\\n     -d '{\n       \"name\": \"my-first-vm\",\n       \"image\": \"ghcr.io/cirruslabs/macos-sonoma-base:latest\",\n       \"cpu\": 4,\n       \"memory\": 4096\n     }'"
-			},
-			"response": []
-		},
-		{
-			"name": "download vncloc (manager route)",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "https://{{manager_host}}/console/{{vm_name}}/vncloc",
-					"protocol": "https",
-					"host": [
-						"{{manager_host}}"
-					],
-					"path": [
-						"console",
-						"{{vm_name}}",
-						"vncloc"
-					]
-				},
-				"description": "Downloads a macOS Screen Sharing `.vncloc` file for a running VM. Requires authenticated manager session cookie and VM ownership."
 			},
 			"response": []
 		}
