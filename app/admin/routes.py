@@ -3,7 +3,7 @@ import re
 import secrets
 from datetime import datetime
 from flask import render_template, redirect, url_for, flash, request, current_app
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy.orm import selectinload
 from app.admin import bp
 from app.extensions import db, bcrypt
