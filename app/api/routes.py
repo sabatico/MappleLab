@@ -166,6 +166,10 @@ def _advance_async_op(vm):
                 vm.node_id = None
                 vm.last_saved_at = datetime.utcnow()
                 vm.status_detail = None
+                # Update vm.registry_tag so Resume/Re-pull pull from gold-images/<name>:latest
+                gold = GoldImage.query.filter_by(name=gold_name).first()
+                if gold and gold.registry_tag:
+                    vm.registry_tag = gold.registry_tag
                 _verify_vm_absent_on_node(source_node, vm.name, 'gold_push_done')
                 trigger_gold_distribution(gold_name)
             else:

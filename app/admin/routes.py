@@ -467,6 +467,7 @@ def make_gold_image(vm_id):
         current_app.tart.save_vm(vm.node, vm.name, registry_tag, expected_disk_gb=vm.disk_size_gb)
         set_vm_status(vm, 'pushing', source='ui', context='admin_make_gold')
         vm.status_detail = f'gold:{gold_name}'
+        vm.registry_tag = registry_tag  # So Resume/Re-pull use gold-images/<name>:latest
         db.session.commit()
 
         gold = GoldImage.query.filter_by(name=gold_name).first()
