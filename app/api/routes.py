@@ -172,25 +172,25 @@ def _advance_async_op(vm):
                 target_node_id = _parse_migration_target(vm.status_detail)
                 if target_node_id:
                     target_node = Node.query.filter_by(id=target_node_id, active=True).first()
-                if not target_node:
-                    set_vm_status(vm, 'archived', source='api_poller', context='migration_push_done_target_unavailable')
-                    vm.node_id = None
-                    vm.last_saved_at = datetime.utcnow()
-                    vm.status_detail = (
-                        'Migration push completed but target node is unavailable. '
-                        'Use Resume to start from registry.'
-                    )
-                else:
-                    registry_tag = (vm.registry_tag or '').strip()
-                    current_app.tart.restore_vm(
-                        target_node,
-                        vm.name,
-                        registry_tag,
-                        expected_disk_gb=vm.disk_size_gb,
-                    )
-                    set_vm_status(vm, 'pulling', source='api_poller', context='migration_restore_started')
-                    vm.node_id = target_node.id
-                    vm.status_detail = None
+                    if not target_node:
+                        set_vm_status(vm, 'archived', source='api_poller', context='migration_push_done_target_unavailable')
+                        vm.node_id = None
+                        vm.last_saved_at = datetime.utcnow()
+                        vm.status_detail = (
+                            'Migration push completed but target node is unavailable. '
+                            'Use Resume to start from registry.'
+                        )
+                    else:
+                        registry_tag = (vm.registry_tag or '').strip()
+                        current_app.tart.restore_vm(
+                            target_node,
+                            vm.name,
+                            registry_tag,
+                            expected_disk_gb=vm.disk_size_gb,
+                        )
+                        set_vm_status(vm, 'pulling', source='api_poller', context='migration_restore_started')
+                        vm.node_id = target_node.id
+                        vm.status_detail = None
                     _verify_vm_absent_on_node(source_node, vm.name, 'migration_push_done')
                 else:
                     set_vm_status(vm, 'archived', source='api_poller', context='archive_push_done')
