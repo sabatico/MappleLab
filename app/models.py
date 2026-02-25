@@ -71,8 +71,12 @@ class VM(db.Model):
     cleanup_last_error = db.Column(db.String(256), nullable=True)
     cleanup_last_run_at = db.Column(db.DateTime, nullable=True)
     cleanup_target_digest = db.Column(db.String(128), nullable=True)
-    status_events = db.relationship('VMStatusEvent', backref='vm', lazy='select')
-    vnc_sessions = db.relationship('VMVncSession', backref='vm', lazy='select')
+    status_events = db.relationship(
+        'VMStatusEvent', backref='vm', lazy='select', cascade='all, delete-orphan'
+    )
+    vnc_sessions = db.relationship(
+        'VMVncSession', backref='vm', lazy='select', cascade='all, delete-orphan'
+    )
 
 
 class VMStatusEvent(db.Model):
