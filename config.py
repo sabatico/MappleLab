@@ -45,6 +45,9 @@ class Config:
     VNC_DIRECT_PORT_MAX = int(os.environ.get('VNC_DIRECT_PORT_MAX', 57099))
     # Override host in .vncloc when set (e.g. manager LAN IP if client uses external hostname).
     VNC_DIRECT_HOST = os.environ.get('VNC_DIRECT_HOST', '')
+    # Internal port range for SSH tunnels when manager cannot reach VM directly.
+    VNC_TCP_TUNNEL_PORT_MIN = int(os.environ.get('VNC_TCP_TUNNEL_PORT_MIN', 57100))
+    VNC_TCP_TUNNEL_PORT_MAX = int(os.environ.get('VNC_TCP_TUNNEL_PORT_MAX', 57199))
 
     # VNC defaults (TART / Cirrus Labs base image default credentials)
     VNC_PORT = 5900

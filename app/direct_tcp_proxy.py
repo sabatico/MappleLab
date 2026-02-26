@@ -42,10 +42,11 @@ class DirectTcpProxyManager:
                 continue
         raise RuntimeError('No free direct TCP proxy ports available')
 
-    def start_proxy(self, vm_name, target_host, target_port):
+    def start_proxy(self, vm_name, target_host, target_port, on_stop=None):
         """
         Start (or reuse) a local TCP proxy for vm_name.
         Returns the allocated local port.
+        on_stop: optional callable when proxy stops (e.g. tear down SSH tunnel).
         """
         with self._lock:
             existing = self._proxies.get(vm_name)
@@ -111,6 +112,7 @@ class DirectTcpProxyManager:
                 'server_sock': server_sock,
                 'stop_event': stop_event,
                 'thread': t,
+                'on_stop': on_stop,
             }
 
         logger.info(
@@ -205,6 +207,12 @@ class DirectTcpProxyManager:
             info['server_sock'].close()
         except Exception:
             pass
+        on_stop = info.get('on_stop')
+        if on_stop:
+            try:
+                on_stop()
+            except Exception as e:
+                logger.warning('Direct proxy on_stop callback failed vm=%s: %s', vm_name, e)
         logger.info('Direct TCP proxy stopped vm=%s', vm_name)
 
     def get_proxy_port(self, vm_name):

@@ -215,17 +215,44 @@ def _prepare_vnc_direct_proxy(vm_name):
         flash(f'Could not determine VM IP for "{vm_name}".', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
+    # When manager and node are on different hosts, manager cannot reach vm_ip (node-local).
+    # Use SSH tunnel: proxy connects to localhost:tunnel_port, tunnel forwards via node to vm_ip:5900.
+    node = vm.node
+    is_remote_node = node.host not in ('localhost', '127.0.0.1', '::1')
+    target_host = None
+    target_port = None
+    on_stop = None
+
+    if is_remote_node:
+        try:
+            tunnel_port = current_app.tunnel_manager.start_vnc_tcp_tunnel(
+                vm_name, node, vm_ip, vnc_port
+            )
+            target_host = '127.0.0.1'
+            target_port = tunnel_port
+            on_stop = lambda vm=vm_name: current_app.tunnel_manager.stop_vnc_tcp_tunnel(vm)
+        except Exception as e:
+            logger.error("VNC TCP tunnel failed for %s via %s: %s", vm_name, node.host, e)
+            flash(f'Failed to create VNC tunnel: {e}', 'danger')
+            return redirect(url_for('main.vm_detail', vm_name=vm_name))
+    else:
+        target_host = vm_ip
+        target_port = vnc_port
+
     try:
         proxy_port = current_app.direct_tcp_proxy.start_proxy(
             vm_name,
-            vm_ip,
-            vnc_port,
+            target_host,
+            target_port,
+            on_stop=on_stop,
         )
     except Exception as e:
         logger.error(
             "VNC direct proxy failed for %s to %s:%s: %s",
-            vm_name, vm_ip, vnc_port, e,
+            vm_name, target_host, target_port, e,
         )
+        if is_remote_node:
+            current_app.tunnel_manager.stop_vnc_tcp_tunnel(vm_name)
         flash(f'Failed to prepare direct proxy: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
