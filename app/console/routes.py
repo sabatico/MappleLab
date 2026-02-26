@@ -165,6 +165,10 @@ def download_vncloc(vm_name):
         return result
 
     manager_host, proxy_port = result
+    logger.info(
+        'vncloc generated vm=%s host=%s port=%d (client must reach this for VNC)',
+        vm_name, manager_host, proxy_port,
+    )
     vnc_username = quote(current_app.config.get('VNC_DEFAULT_USERNAME', ''), safe='')
     vnc_password = quote(current_app.config.get('VNC_DEFAULT_PASSWORD', ''), safe='')
     if vnc_username or vnc_password:
@@ -225,7 +229,10 @@ def _prepare_vnc_direct_proxy(vm_name):
         flash(f'Failed to prepare direct proxy: {e}', 'danger')
         return redirect(url_for('main.vm_detail', vm_name=vm_name))
 
-    manager_host = request.host.split(':', 1)[0]
+    manager_host = (
+        current_app.config.get('VNC_DIRECT_HOST', '').strip()
+        or request.host.split(':', 1)[0]
+    )
     return (manager_host, proxy_port)
 
 

@@ -34,6 +34,7 @@ Source: `config.py`, `.env.example`
 - `WEBSOCKIFY_PORT_MAX`
 - `VNC_DIRECT_PORT_MIN` (default `57000`)
 - `VNC_DIRECT_PORT_MAX` (default `57099`)
+- `VNC_DIRECT_HOST` — override host in `.vncloc` when set (e.g. manager LAN IP if client uses external hostname)
 
 ## HTTPS and Proxy
 

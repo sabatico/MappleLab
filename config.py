@@ -43,6 +43,8 @@ class Config:
     # Raw TCP port range for native VNC client (.vncloc) proxy endpoints.
     VNC_DIRECT_PORT_MIN = int(os.environ.get('VNC_DIRECT_PORT_MIN', 57000))
     VNC_DIRECT_PORT_MAX = int(os.environ.get('VNC_DIRECT_PORT_MAX', 57099))
+    # Override host in .vncloc when set (e.g. manager LAN IP if client uses external hostname).
+    VNC_DIRECT_HOST = os.environ.get('VNC_DIRECT_HOST', '')
 
     # VNC defaults (TART / Cirrus Labs base image default credentials)
     VNC_PORT = 5900

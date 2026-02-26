@@ -65,13 +65,17 @@ class DirectTcpProxyManager:
             try:
                 while not stop_event.is_set():
                     try:
-                        client_sock, _ = server_sock.accept()
+                        client_sock, client_addr = server_sock.accept()
                     except socket.timeout:
                         continue
                     except OSError:
                         # Listener was closed during shutdown.
                         break
 
+                    logger.info(
+                        'Direct proxy: client connected vm=%s from %s:%d',
+                        vm_name, client_addr[0], client_addr[1],
+                    )
                     try:
                         target_sock = socket.create_connection((target_host, target_port), timeout=5)
                     except Exception as e:

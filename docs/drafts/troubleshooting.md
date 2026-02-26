@@ -51,6 +51,7 @@ curl http://localhost:5001/v2/_catalog
 - Confirm manager TCP direct-proxy range is reachable from the client Mac (`57000-57099` by default).
 - Confirm VM is still running (proxy is torn down on stop/delete/disconnect flows).
 - Validate manager host in the `.vncloc` file is routable from the client network/VPN.
+- **No connection logs on manager**: If you never see `Direct proxy: client connected` in manager logs, the client is not reaching the manager. Check: (1) host in `.vncloc` — open the file and verify the host is reachable from your Mac; (2) firewall allows 57000-57099; (3) if accessing via external hostname, set `VNC_DIRECT_HOST` to the manager's LAN IP so the `.vncloc` uses an address reachable from your network.
 
 ## `.vncloc` Download Route Fails
 
