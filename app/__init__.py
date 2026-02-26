@@ -5,7 +5,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy import inspect, text
 
 logger = logging.getLogger(__name__)
-
+#
 
 def _ensure_sqlite_columns(app):
     """Lightweight schema compatibility for existing SQLite installs."""
