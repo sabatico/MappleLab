@@ -2,6 +2,14 @@
 
 A Flask web dashboard for managing TART virtual machines across multiple Mac nodes, with save/resume support via a local Docker registry.
 
+## SECURITY ADVISORY
+This is NOT aproduction ready product.
+- VMs have admin/admin logins thatcan be changed in env.  and in config.py
+- Communciation between nodes within the VLAN is HTTP based
+
+
+
+
 ## Features
 
 - Multi-user login with per-user VM namespacing
