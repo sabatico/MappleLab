@@ -1,6 +1,6 @@
-# Orchard UI
+# MappleLab
 
-A Flask web dashboard for managing TART virtual machines across multiple Mac nodes, with save/resume support via a local Docker registry.
+A Flask web orchestrator for managing TART virtual machines across multiple Mac nodes, with save/resume/golden image support via a local Docker registry .
 
 ## SECURITY ADVISORY
 This is NOT aproduction ready product.
