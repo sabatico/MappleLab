@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.orm import selectinload
 from app.admin import bp
 from app.extensions import db, bcrypt
-from app.models import User, VM, AppSettings, GoldImage
+from app.models import User, VM, AppSettings, GoldImage, RegistrationRequest
 from app.registry_inventory import storage_breakdown, delete_orphan_by_digest
 from app.registry_cleanup import cleanup_vm_registry_tag
 from app.tart_client import TartAPIError
@@ -103,7 +103,55 @@ def _upsert_settings_from_form():
 @admin_required
 def users():
     user_rows = User.query.order_by(User.created_at.desc()).all()
-    return render_template('admin/users.html', users=user_rows)
+    pending = RegistrationRequest.query.order_by(RegistrationRequest.requested_at.asc()).all()
+    return render_template('admin/users.html', users=user_rows, pending_registrations=pending)
+
+
+@bp.route('/registrations/<int:req_id>/approve', methods=['POST'])
+@login_required
+@admin_required
+def approve_registration(req_id):
+    reg = RegistrationRequest.query.get_or_404(req_id)
+    if User.query.filter((User.email == reg.email) | (User.username == reg.email)).first():
+        flash(f'User with email {reg.email} already exists.', 'danger')
+        db.session.delete(reg)
+        db.session.commit()
+        return redirect(url_for('admin.users'))
+    user = User(
+        username=reg.email,
+        email=reg.email,
+        password_hash=bcrypt.generate_password_hash(secrets.token_urlsafe(24)).decode('utf-8'),
+        is_admin=False,
+        max_active_vms=1,
+        max_saved_vms=2,
+        disk_quota_gb=100,
+        must_set_password=True,
+        invite_token=secrets.token_urlsafe(32),
+        invited_at=datetime.utcnow(),
+    )
+    db.session.add(user)
+    db.session.delete(reg)
+    db.session.commit()
+    sent = send_invite_email(user)
+    flash(
+        f'User "{reg.email}" approved. ' + ('Invite email sent.' if sent else 'SMTP not configured; copy the invite link manually.'),
+        'success' if sent else 'warning',
+    )
+    logger.info("Admin approved registration for %s", reg.email)
+    return redirect(url_for('admin.users'))
+
+
+@bp.route('/registrations/<int:req_id>/deny', methods=['POST'])
+@login_required
+@admin_required
+def deny_registration(req_id):
+    reg = RegistrationRequest.query.get_or_404(req_id)
+    email = reg.email
+    db.session.delete(reg)
+    db.session.commit()
+    logger.info("Admin denied registration for %s", email)
+    flash(f'Registration request from "{email}" denied and removed.', 'success')
+    return redirect(url_for('admin.users'))
 
 
 @bp.route('/overview')
