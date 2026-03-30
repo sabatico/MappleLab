@@ -32,11 +32,8 @@
                     <label class="form-label">SMTP Password</label>
                     <input type="password" class="form-control" name="smtp_password"
                            value="" autocomplete="new-password"
-                           placeholder="Optional runtime override">
-                    <div class="form-text">
-                        For secure storage, configure <code>MAIL_PASSWORD</code> in environment.
-                        This field is never persisted in the database.
-                    </div>
+                           placeholder="{% if settings and settings.smtp_password %}Password saved — leave blank to keep current{% else %}Enter SMTP password{% endif %}">
+                    <div class="form-text">Leave blank to keep the current saved password.</div>
                 </div>
                 <div class="col-md-8">
                     <label class="form-label">From Address</label>
