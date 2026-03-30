@@ -58,6 +58,34 @@ def register():
     return redirect(url_for('auth.login'))
 
 
+@bp.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm = request.form.get('confirm_password', '')
+        try:
+            password_ok = bcrypt.check_password_hash(current_user.password_hash, current_password)
+        except ValueError:
+            password_ok = False
+        if not password_ok:
+            flash('Current password is incorrect.', 'danger')
+            return render_template('auth/change_password.html')
+        if len(new_password) < 8:
+            flash('New password must be at least 8 characters.', 'danger')
+            return render_template('auth/change_password.html')
+        if new_password != confirm:
+            flash('New passwords do not match.', 'danger')
+            return render_template('auth/change_password.html')
+        current_user.password_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        db.session.commit()
+        logger.info("User %r changed their password", current_user.username)
+        flash('Password changed successfully.', 'success')
+        return redirect(url_for('main.dashboard'))
+    return render_template('auth/change_password.html')
+
+
 @bp.route('/set-password/<token>', methods=['GET', 'POST'])
 def set_password(token):
     user = User.query.filter_by(invite_token=token).first()

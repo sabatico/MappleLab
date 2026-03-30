@@ -102,6 +102,12 @@
                             <li><hr class="dropdown-divider"></li>
                             {% endif %}
                             <li>
+                                <a class="dropdown-item" href="{{ url_for('auth.change_password') }}">
+                                    {{ icon_lock() }} Change Password
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
                                 <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
                                     {{ icon_logout() }} Logout
                                 </a>
