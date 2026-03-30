@@ -148,9 +148,17 @@ def create_app(config_class=None):
     def inject_config():
         """Make certain config values available in all templates."""
         from flask_login import current_user
+        from app.models import RegistrationRequest
+        pending_count = 0
+        if current_user.is_authenticated and current_user.is_admin:
+            try:
+                pending_count = RegistrationRequest.query.count()
+            except Exception:
+                pass
         return {
             'poll_interval_ms': app.config['VM_POLL_INTERVAL_MS'],
             'current_user': current_user,
+            'pending_registrations_count': pending_count,
         }
 
     @app.before_request
