@@ -6,7 +6,7 @@ This guide walks you through first-time setup after installation: creating your 
 
 ## 1. Create the First Admin Account
 
-MAppleLab uses invitation-based account creation. The very first admin account must be created from the command line once.
+The very first admin account must be created from the command line once. After that, additional users can be added via the UI (admin-created or self-service registration with approval).
 
 Open a new Terminal window, go to your install directory, and run:
 
@@ -38,7 +38,7 @@ Then exit the shell:
 exit()
 ```
 
-> **Important:** Replace `admin@example.com` with your actual email and `ChangeMeNow123!` with a strong password. You can change the password again from the UI after login.
+> **Important:** Replace `admin@example.com` with your actual email and `ChangeMeNow123!` with a strong password. You can change the password at any time from the UI via **username → Change Password**.
 
 ---
 
@@ -52,7 +52,7 @@ exit()
 
 ## 3. Configure SMTP (Recommended)
 
-SMTP lets MAppleLab send invite emails to new users. You can skip this and create user passwords manually, but setting it up now is easier.
+SMTP lets MAppleLab send invite emails to new users. You can skip this and share invite links manually, but setting it up now is easier.
 
 1. Click your email address in the top-right corner
 2. Select **Settings**
@@ -67,6 +67,8 @@ SMTP lets MAppleLab send invite emails to new users. You can skip this and creat
 5. Enter a test recipient email and click **Send Test Email**
 
 If you receive the test email, SMTP is working correctly.
+
+> **Note:** The SMTP password is saved persistently in the database. Leave the field blank on future saves to keep the current value.
 
 ---
 

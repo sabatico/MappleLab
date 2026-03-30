@@ -5,7 +5,7 @@ from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import bp
 from app.extensions import db, bcrypt
-from app.models import User
+from app.models import User, RegistrationRequest
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,31 @@ def logout():
 def register():
     flash('Account creation is invitation-only. Please contact an administrator.', 'warning')
     return redirect(url_for('auth.login'))
+
+
+@bp.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    if request.method == 'POST':
+        full_name = request.form.get('full_name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        if not full_name or not email:
+            flash('Full name and email are required.', 'danger')
+            return render_template('auth/signup.html')
+        if User.query.filter((User.email == email) | (User.username == email)).first():
+            flash('An account with this email already exists.', 'danger')
+            return render_template('auth/signup.html')
+        if RegistrationRequest.query.filter_by(email=email).first():
+            flash('A registration request for this email is already pending.', 'warning')
+            return render_template('auth/signup.html')
+        reg = RegistrationRequest(full_name=full_name, email=email)
+        db.session.add(reg)
+        db.session.commit()
+        logger.info("Registration request submitted for %s (%s)", email, full_name)
+        flash('Your request has been submitted. An admin will review it shortly.', 'success')
+        return redirect(url_for('auth.login'))
+    return render_template('auth/signup.html')
 
 
 @bp.route('/change-password', methods=['GET', 'POST'])

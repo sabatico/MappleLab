@@ -130,6 +130,14 @@ class AppSettings(db.Model):
     smtp_use_ssl = db.Column(db.Boolean, default=False, nullable=False)
 
 
+class RegistrationRequest(db.Model):
+    __tablename__ = 'registration_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(128), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class GoldImage(db.Model):
     __tablename__ = 'gold_images'
     id = db.Column(db.Integer, primary_key=True)

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up — MAppleLab{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                {% from '_macros/icons.html' import icon_signup %}
+                <h4 class="mb-0">{{ icon_signup() }} Request Access</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Fill in your details and an admin will review your request.</p>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="full_name" class="form-label">Full name</label>
+                        <input type="text" class="form-control" id="full_name" name="full_name"
+                               required autofocus autocomplete="name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                               required autocomplete="email">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        {{ icon_signup() }} Submit Request
+                    </button>
+                </form>
+                <div class="mt-3 text-center small">
+                    <a href="{{ url_for('auth.login') }}">Back to login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -11,6 +11,19 @@ Fields include:
 - quotas: `max_active_vms`, `max_saved_vms`, `disk_quota_gb`
 - invite lifecycle: `must_set_password`, `invite_token`, `invited_at`, `last_login_at`
 
+## RegistrationRequest
+
+Holds pending self-service sign-up requests submitted from the login page, awaiting admin approval or denial.
+
+Fields:
+
+- `full_name` — submitted by the requester
+- `email` — unique; blocked if an account or pending request already exists for this email
+- `requested_at` — timestamp of submission
+
+On **Approve**: a `User` record is created from this request and the `RegistrationRequest` row is deleted.
+On **Deny**: the row is deleted with no further action.
+
 ## Node
 
 Fields include:
@@ -31,7 +44,14 @@ Fields include:
 
 ## AppSettings
 
-Stores runtime SMTP values used by admin settings UI.
+Stores runtime SMTP configuration used by Admin → Settings UI.
+
+Fields include:
+
+- `smtp_host`, `smtp_port`, `smtp_user`, `smtp_password`
+- `smtp_from`, `smtp_use_tls`, `smtp_use_ssl`
+
+The SMTP password is stored in plaintext in this table (same threat model as `.env`). Leave the password field blank when saving settings to retain the existing value.
 
 ## GoldImage
 

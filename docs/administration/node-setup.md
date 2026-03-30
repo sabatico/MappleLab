@@ -9,6 +9,8 @@ Prepare each Mac node before adding it to MAppleLab. These steps must be done on
 TART needs access to credentials at any time, including after a reboot. Prevent macOS from locking the login keychain:
 
 Open Terminal on the **node Mac** and run:
+ONLY WORKS IN UI 
+UNLOCK KEYCHAIN FIRST 
 
 ```bash
 security set-keychain-settings -t 0 login.keychain

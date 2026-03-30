@@ -81,19 +81,9 @@ def create_app(config_class=None):
     # --- Create DB tables (no-op if already exist) ---
     from app.extensions import db
     with app.app_context():
-        from app.models import User, VM, Node, AppSettings, GoldImage, GoldImageNode  # noqa: F401
+        from app.models import User, VM, Node, AppSettings, GoldImage, GoldImageNode, RegistrationRequest  # noqa: F401
         db.create_all()
         _ensure_sqlite_columns(app)
-        # Security hardening: scrub legacy plaintext SMTP passwords from DB.
-        legacy_smtp_rows = AppSettings.query.filter(AppSettings.smtp_password.isnot(None)).all()
-        if legacy_smtp_rows:
-            for row in legacy_smtp_rows:
-                row.smtp_password = None
-            db.session.commit()
-            logger.warning(
-                "Cleared legacy plaintext SMTP passwords from %d app_settings row(s)",
-                len(legacy_smtp_rows),
-            )
     logger.debug("Database tables ensured")
 
     # --- Initialize services ---
