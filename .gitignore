@@ -15,3 +15,6 @@ app/static/novnc/
 *.egg-info/
 dist/
 build/
+docs/PR/
+.claude/
+*.pptx
