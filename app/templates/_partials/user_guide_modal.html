@@ -1,0 +1,101 @@
+<div class="modal fade" id="userGuideModal" tabindex="-1" aria-labelledby="userGuideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                {% from '_macros/icons.html' import icon_help %}
+                <h5 class="modal-title" id="userGuideModalLabel">{{ icon_help() }} User Guide</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+                {# ── Important notice ── #}
+                <div class="border border-warning rounded p-3 mb-4 d-flex gap-3 align-items-start">
+                    <i class="bi bi-exclamation-triangle-fill text-warning fs-4 flex-shrink-0"></i>
+                    <div>
+                        <strong class="text-warning">Please stop or pause your VM when you're done working.</strong>
+                        <p class="mb-0 mt-1 small">Running VMs consume resources on shared Mac hosts even when you're not using them. Always <strong>Stop</strong> your VM at the end of your session. If you want to keep your work, use <strong>Save &amp; Shutdown</strong> to archive it safely.</p>
+                    </div>
+                </div>
+
+                {# ── Overview ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">What is MAppleLab?</h6>
+                <p>MAppleLab lets you create, run, and manage macOS virtual machines from your browser. You can open a live console, save a VM to resume later, and manage your VMs within your assigned resource limits.</p>
+
+                <hr>
+
+                {# ── Dashboard ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">My VMs</h6>
+                <p>The <strong>My VMs</strong> page is your home. It lists all your VMs and their current status. The table refreshes automatically every few seconds.</p>
+                <table class="table table-sm table-bordered mb-3">
+                    <thead class="table-dark">
+                        <tr><th>Status</th><th>Meaning</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><span class="badge bg-success">running</span></td><td>VM is on and reachable</td></tr>
+                        <tr><td><span class="badge bg-warning text-dark">stopped</span></td><td>VM is off but still on its node</td></tr>
+                        <tr><td><span class="badge bg-secondary">archived</span></td><td>VM is saved to the registry, not using any node</td></tr>
+                        <tr><td><span class="badge bg-info text-dark">creating</span></td><td>VM is being set up for the first time</td></tr>
+                        <tr><td><span class="badge bg-info text-dark">pushing</span></td><td>VM disk is being saved to the registry</td></tr>
+                        <tr><td><span class="badge bg-info text-dark">pulling</span></td><td>VM is being restored from the registry</td></tr>
+                        <tr><td><span class="badge bg-danger">failed</span></td><td>Last operation failed — check the detail page</td></tr>
+                    </tbody>
+                </table>
+
+                <hr>
+
+                {# ── Create VM ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">Creating a VM</h6>
+                <ol>
+                    <li>Click <strong>Create VM</strong> in the navigation bar</li>
+                    <li>Choose a base image from the dropdown (Gold Images are admin-prepared; Base Images are standard)</li>
+                    <li>Optionally set CPU and memory</li>
+                    <li>Give your VM a name and click <strong>Create VM</strong></li>
+                    <li>Wait for the status to change from <code>creating</code> to <code>running</code> — this may take a few minutes on first use</li>
+                </ol>
+                <p class="text-muted small">Your quotas limit how many VMs you can run simultaneously and how many you can keep saved.</p>
+
+                <hr>
+
+                {# ── Start / Stop ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">Starting &amp; Stopping</h6>
+                <ul>
+                    <li><strong>Stop</strong> — shuts the VM down. It stays on its node and can be started again instantly.</li>
+                    <li><strong>Start</strong> — powers a stopped VM back on.</li>
+                </ul>
+
+                <hr>
+
+                {# ── Save & Resume ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">Saving &amp; Resuming</h6>
+                <ul>
+                    <li><strong>Save &amp; Shutdown</strong> — stops the VM and uploads its full disk to the registry. Status becomes <code>archived</code>. Use this to free up node resources while keeping your VM.</li>
+                    <li><strong>Resume</strong> — downloads the archived VM back to a node and starts it. Status goes <code>archived → pulling → running</code>.</li>
+                </ul>
+                <p class="text-muted small">Saving can take several minutes depending on disk size.</p>
+
+                <hr>
+
+                {# ── Console ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">Accessing the Console</h6>
+                <p>The VM must be <span class="badge bg-success">running</span> to open a console.</p>
+                <ul>
+                    <li><strong>Console</strong> — opens a browser-based noVNC session. Requires HTTPS for remote access.</li>
+                    <li><strong>VNC (macOS)</strong> — downloads a <code>.vncloc</code> file. Open it with macOS Screen Sharing for a native experience.</li>
+                </ul>
+                <p class="text-muted small">If the console fails to connect, stop and restart the VM then try again.</p>
+
+                <hr>
+
+                {# ── Account ── #}
+                <h6 class="text-uppercase text-secondary fw-bold small mb-2">Your Account</h6>
+                <ul>
+                    <li><strong>Change Password</strong> — click your username in the top-right corner and select <em>Change Password</em>. Enter your current password and choose a new one (minimum 8 characters).</li>
+                </ul>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
