@@ -33,12 +33,16 @@ This file lists Flask routes by blueprint.
 
 - `GET|POST /auth/login`
 - `GET /auth/logout`
-- `GET|POST /auth/register` (invitation-only redirect)
-- `GET|POST /auth/set-password/<token>`
+- `GET|POST /auth/signup` — self-service registration request (full name + email, no password)
+- `GET|POST /auth/register` — legacy redirect to login (invitation-only message)
+- `GET|POST /auth/change-password` — change own password (requires login; current + new + confirm)
+- `GET|POST /auth/set-password/<token>` — first-time password set via invite token
 
 ## Admin (`app/admin/routes.py`)
 
-- `GET /admin/users`
+- `GET /admin/users` — user list + pending registration requests
+- `POST /admin/registrations/<id>/approve` — approve a registration request: creates user + sends invite
+- `POST /admin/registrations/<id>/deny` — deny and delete a registration request
 - `GET /admin/overview`
 - `GET /admin/gold-images`
 - `POST /admin/gold-images/<id>/redistribute`

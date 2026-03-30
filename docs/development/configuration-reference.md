@@ -23,6 +23,8 @@ Source: `config.py`, `.env.example`
 - `MAIL_PASSWORD`
 - `MAIL_DEFAULT_SENDER`
 
+> **Note:** SMTP settings (host, port, username, password, from address, security mode) can be configured and saved persistently via **Admin → Settings** in the UI. The password entered in the UI is stored in the `app_settings` database table. `MAIL_PASSWORD` in the environment is an alternative for deployments that prefer secrets outside the database; if both are set, the database value takes precedence (it is applied at send time via `_apply_mail_config`).
+
 ## VNC and Console
 
 - `VNC_DEFAULT_USERNAME`
@@ -50,8 +52,6 @@ Source: `config.py`, `.env.example`
 
 - `VM_POLL_INTERVAL_MS`
 - `TART_IMAGES`
-
-> **Note:** SMTP can be configured in Admin UI (`AppSettings`) and may override env defaults at runtime.
 
 > **Note:** `.vncloc` generation currently embeds `VNC_DEFAULT_USERNAME`/`VNC_DEFAULT_PASSWORD` in the generated `vnc://` URL when those values are set.
 
