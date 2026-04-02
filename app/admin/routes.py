@@ -24,6 +24,7 @@ from app.main.routes import (
     _agent_vm_size_on_disk_gb,
     _verify_vm_absent_on_node,
     _registry_authority_from_config,
+    do_repull_vm,
 )
 
 logger = logging.getLogger(__name__)
@@ -554,40 +555,12 @@ def repull_vm(vm_id):
     if vm.status != 'failed':
         flash(f'VM "{vm.name}" is not in failed state (status: {vm.status}).', 'warning')
         return _redirect_overview()
-    if not vm.node:
-        flash(f'VM "{vm.name}" has no assigned node for re-pull.', 'warning')
-        return _redirect_overview()
-    if not vm.node.active:
-        flash(
-            f'Node "{vm.node.name}" is deactivated; re-pull is blocked for "{vm.name}".',
-            'warning',
-        )
-        return _redirect_overview()
-    # Never-saved VMs have no registry image — pull from base_image (gold image) instead.
-    if not vm.last_saved_at:
-        pull_tag = vm.base_image
-        if not pull_tag:
-            flash(f'VM "{vm.name}" has no base image recorded; cannot re-pull.', 'danger')
-            return _redirect_overview()
-    else:
-        pull_tag = vm.registry_tag
-        if not pull_tag:
-            flash(f'VM "{vm.name}" has no registry tag; cannot re-pull.', 'danger')
-            return _redirect_overview()
-
     try:
-        pull_tag = _sanitize_registry_tag(pull_tag)
-        current_app.tart.restore_vm(
-            vm.node,
-            vm.name,
-            pull_tag,
-            expected_disk_gb=vm.disk_size_gb,
-        )
-        set_vm_status(vm, 'pulling', source='ui', context='admin_repull_vm')
-        vm.status_detail = None
-        db.session.commit()
-        logger.info("admin repull_vm() — %r pulling from %r onto node %s", vm.name, pull_tag, vm.node.name)
-        flash(f'Re-pull started for VM "{vm.name}" on "{vm.node.name}".', 'info')
+        pull_tag, err = do_repull_vm(vm)
+        if err:
+            flash(err, 'danger')
+        else:
+            flash(f'Re-pull started for VM "{vm.name}" on "{vm.node.name}".', 'info')
     except TartAPIError as e:
         flash(f'Re-pull failed for "{vm.name}": {e}', 'danger')
     return _redirect_overview()
