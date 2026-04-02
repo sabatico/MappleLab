@@ -26,6 +26,8 @@ ssh "${USER}@${NODE}" "cd ${AGENT_DIR} && pip3 install -r requirements.txt"
 # Create start script on node
 ssh "${USER}@${NODE}" "cat > ${AGENT_DIR}/start_agent.sh" << EOF
 #!/bin/bash
+# Include Homebrew paths so tart is found when running as a service
+export PATH="/opt/homebrew/bin:/usr/local/bin:\$PATH"
 export AGENT_TOKEN="\$(cat ~/.agent_token 2>/dev/null || echo '')"
 export REGISTRY_URL="${REGISTRY_URL}"
 export MAX_VMS=2

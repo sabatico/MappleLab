@@ -14,7 +14,7 @@ from app.usage_events import ensure_vm_status_baseline, set_vm_status
 logger = logging.getLogger(__name__)
 
 DEFAULT_VM_CPU = 4
-DEFAULT_VM_MEMORY_MB = 4096
+DEFAULT_VM_MEMORY_MB = 8192
 MAX_VM_CPU = 8
 MAX_VM_MEMORY_MB = 16384
 
