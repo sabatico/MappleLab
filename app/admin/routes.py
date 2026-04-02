@@ -563,23 +563,30 @@ def repull_vm(vm_id):
             'warning',
         )
         return _redirect_overview()
-    if not vm.registry_tag:
-        flash(f'VM "{vm.name}" has no registry tag; cannot re-pull.', 'danger')
-        return _redirect_overview()
+    # Never-saved VMs have no registry image — pull from base_image (gold image) instead.
+    if not vm.last_saved_at:
+        pull_tag = vm.base_image
+        if not pull_tag:
+            flash(f'VM "{vm.name}" has no base image recorded; cannot re-pull.', 'danger')
+            return _redirect_overview()
+    else:
+        pull_tag = vm.registry_tag
+        if not pull_tag:
+            flash(f'VM "{vm.name}" has no registry tag; cannot re-pull.', 'danger')
+            return _redirect_overview()
 
     try:
-        registry_tag = _sanitize_registry_tag(vm.registry_tag)
-        if registry_tag != vm.registry_tag:
-            vm.registry_tag = registry_tag
+        pull_tag = _sanitize_registry_tag(pull_tag)
         current_app.tart.restore_vm(
             vm.node,
             vm.name,
-            registry_tag,
+            pull_tag,
             expected_disk_gb=vm.disk_size_gb,
         )
         set_vm_status(vm, 'pulling', source='ui', context='admin_repull_vm')
         vm.status_detail = None
         db.session.commit()
+        logger.info("admin repull_vm() — %r pulling from %r onto node %s", vm.name, pull_tag, vm.node.name)
         flash(f'Re-pull started for VM "{vm.name}" on "{vm.node.name}".', 'info')
     except TartAPIError as e:
         flash(f'Re-pull failed for "{vm.name}": {e}', 'danger')
