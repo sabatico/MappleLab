@@ -10,7 +10,7 @@ This file lists Flask routes by blueprint.
 - `POST /vms/<vm_name>/save`
 - `POST /vms/<vm_name>/migrate`
 - `POST /vms/<vm_name>/resume`
-- `POST /vms/<vm_name>/repull`
+- `POST /vms/<vm_name>/repull` — re-trigger pull for a `failed` VM; delegates to `do_repull_vm(vm)` shared helper
 - `POST /vms/<vm_name>/start`
 - `POST /vms/<vm_name>/stop`
 - `POST /vms/<vm_name>/delete`
@@ -58,6 +58,7 @@ This file lists Flask routes by blueprint.
 - `GET /admin/usage`
 - VM actions under `/admin/vms/<id>/*`:
   - `start`, `stop`, `archive`, `make-gold`, `resume`, `repull`, `delete`, `cleanup-retry`
+  - `repull` delegates to the same `do_repull_vm(vm)` helper as the user route
 
 ## Nodes (`app/nodes/routes.py`)
 

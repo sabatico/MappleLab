@@ -52,8 +52,12 @@ Admins can capture a running or stopped VM as a **Gold Image** — a reusable ba
 
 ## Failure Recovery
 
-- `failed` state may expose **Re-pull** for restore failures
-- Review operation panel details before retry
+- `failed` state exposes **Re-pull** for restore/pull failures
+- Re-pull behaviour depends on whether the VM has ever been saved:
+  - **Never saved** (`last_saved_at` is empty): re-pulls from the VM's `base_image` (the gold image it was created from, already cached on nodes)
+  - **Previously saved**: re-pulls from `registry_tag` (the last snapshot pushed to the registry)
+- Both user and admin Re-pull use the same shared logic (`do_repull_vm` helper in `app/main/routes.py`)
+- Review the operation panel status detail before retrying
 
 ## Usage Telemetry Note
 
