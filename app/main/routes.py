@@ -692,7 +692,7 @@ def repull_vm(vm_name):
         )
         return _redirect_after_action(vm_name)
 
-    never_saved = vm.last_saved_at is None
+    never_saved = not vm.last_saved_at
 
     if never_saved:
         # VM was never successfully pushed to the registry; recreate from base image.
