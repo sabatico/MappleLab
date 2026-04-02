@@ -55,6 +55,37 @@ def _agent_vm_size_on_disk_gb(item):
     return None
 
 
+def do_repull_vm(vm):
+    """
+    Shared repull logic used by both the user and admin repull routes.
+
+    For VMs never saved (last_saved_at empty): pulls from base_image (gold image
+    cached on nodes). For previously saved VMs: pulls from registry_tag.
+
+    Returns (pull_tag, error_message). On success error_message is None.
+    Caller is responsible for flashing and redirecting.
+    """
+    if not vm.node or not vm.node.active:
+        return None, f'Node "{vm.node.name if vm.node else "none"}" is unavailable.'
+
+    if not vm.last_saved_at:
+        pull_tag = vm.base_image
+        if not pull_tag:
+            return None, 'VM has no base image recorded; cannot re-pull.'
+    else:
+        pull_tag = vm.registry_tag
+        if not pull_tag:
+            return None, 'VM has no registry tag; cannot re-pull.'
+
+    pull_tag = _sanitize_registry_tag(pull_tag)
+    current_app.tart.restore_vm(vm.node, vm.name, pull_tag, expected_disk_gb=vm.disk_size_gb)
+    set_vm_status(vm, 'pulling', source='ui', context='repull_vm')
+    vm.status_detail = None
+    db.session.commit()
+    logger.info("do_repull_vm() — %r pulling from %r onto node %s", vm.name, pull_tag, vm.node.name)
+    return pull_tag, None
+
+
 def _sanitize_registry_tag(tag):
     """
     Ensure OCI registry tag is tart-compatible.
@@ -670,54 +701,18 @@ def resume_vm(vm_name):
 @bp.route('/vms/<vm_name>/repull', methods=['POST'])
 @login_required
 def repull_vm(vm_name):
-    """
-    Retry pull/restore for a failed VM on its currently assigned node.
-
-    Two paths:
-    - Never saved (last_saved_at is None): recreate from base_image (covers failed
-      initial creates where no registry image was ever pushed).
-    - Previously saved: restore from registry_tag (standard re-pull).
-    """
+    """Retry pull/restore for a failed VM on its currently assigned node."""
     vm = VM.query.filter_by(name=vm_name, user_id=current_user.id).first_or_404()
     if vm.status != 'failed':
         flash(f'VM is not in failed state (status: {vm.status}).', 'warning')
         return _redirect_after_action(vm_name)
-    if not vm.node:
-        flash('VM has no assigned node for re-pull.', 'warning')
-        return _redirect_after_action(vm_name)
-    if not vm.node.active:
-        flash(
-            f'Node "{vm.node.name}" is deactivated; re-pull on this node is blocked.',
-            'warning',
-        )
-        return _redirect_after_action(vm_name)
-
-    # For VMs never saved, pull from base_image (gold image, cached on nodes).
-    # For VMs previously saved, pull from their registry_tag.
-    if not vm.last_saved_at:
-        pull_tag = vm.base_image
-        if not pull_tag:
-            flash('VM has no base image recorded; cannot re-pull.', 'danger')
-            return _redirect_after_action(vm_name)
-    else:
-        pull_tag = vm.registry_tag
-        if not pull_tag:
-            flash('VM has no registry tag; cannot re-pull.', 'danger')
-            return _redirect_after_action(vm_name)
 
     try:
-        pull_tag = _sanitize_registry_tag(pull_tag)
-        current_app.tart.restore_vm(
-            vm.node,
-            vm_name,
-            pull_tag,
-            expected_disk_gb=vm.disk_size_gb,
-        )
-        set_vm_status(vm, 'pulling', source='ui', context='repull_vm')
-        vm.status_detail = None
-        db.session.commit()
-        logger.info("repull_vm() — %r pulling from %r onto node %s", vm_name, pull_tag, vm.node.name)
-        flash(f'Re-pull started for VM "{vm_name}" on "{vm.node.name}".', 'info')
+        pull_tag, err = do_repull_vm(vm)
+        if err:
+            flash(err, 'danger')
+        else:
+            flash(f'Re-pull started for VM "{vm_name}" on "{vm.node.name}".', 'info')
     except TartAPIError as e:
         logger.error("repull_vm() — failed: %s", e)
         flash(f'Re-pull failed: {e}', 'danger')
