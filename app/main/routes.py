@@ -692,63 +692,35 @@ def repull_vm(vm_name):
         )
         return _redirect_after_action(vm_name)
 
-    never_saved = not vm.last_saved_at
-
-    if never_saved:
-        # VM was never successfully pushed to the registry; recreate from base image.
-        if not vm.base_image:
-            flash('VM has no base image recorded; cannot recreate.', 'danger')
+    # For VMs never saved, pull from base_image (gold image, cached on nodes).
+    # For VMs previously saved, pull from their registry_tag.
+    if not vm.last_saved_at:
+        pull_tag = vm.base_image
+        if not pull_tag:
+            flash('VM has no base image recorded; cannot re-pull.', 'danger')
             return _redirect_after_action(vm_name)
-        try:
-            # Best-effort cleanup of any stale local VM on the node.
-            try:
-                current_app.tart.delete_vm(vm.node, vm_name)
-                logger.info("repull_vm() — deleted stale local VM %r on node %s before recreate",
-                            vm_name, vm.node.name)
-            except TartAPIError:
-                pass  # Not present or already gone — fine.
-
-            set_vm_status(vm, 'creating', source='ui', context='repull_vm_recreate')
-            vm.status_detail = None
-            db.session.commit()
-
-            current_app.tart.create_vm(vm.node, vm_name, vm.base_image, vm.cpu, vm.memory_mb)
-            current_app.tart.start_vm(vm.node, vm_name)
-            set_vm_status(vm, 'running', source='ui', context='repull_vm_recreated')
-            vm.last_started_at = datetime.utcnow()
-            db.session.commit()
-            logger.info("repull_vm() — %r recreated from base_image=%r on node %s",
-                        vm_name, vm.base_image, vm.node.name)
-            flash(f'VM "{vm_name}" was re-created from base image and started.', 'success')
-        except TartAPIError as e:
-            logger.error("repull_vm() — recreate failed: %s", e)
-            set_vm_status(vm, 'failed', source='ui', context='repull_vm_recreate_error')
-            vm.status_detail = str(e)
-            db.session.commit()
-            flash(f'Re-create failed: {e}', 'danger')
     else:
-        # VM was saved before; restore from registry.
-        if not vm.registry_tag:
+        pull_tag = vm.registry_tag
+        if not pull_tag:
             flash('VM has no registry tag; cannot re-pull.', 'danger')
             return _redirect_after_action(vm_name)
-        try:
-            registry_tag = _sanitize_registry_tag(vm.registry_tag)
-            if registry_tag != vm.registry_tag:
-                vm.registry_tag = registry_tag
-            current_app.tart.restore_vm(
-                vm.node,
-                vm_name,
-                registry_tag,
-                expected_disk_gb=vm.disk_size_gb,
-            )
-            set_vm_status(vm, 'pulling', source='ui', context='repull_vm')
-            vm.status_detail = None
-            db.session.commit()
-            logger.info("repull_vm() — %r pulling from registry onto node %s", vm_name, vm.node.name)
-            flash(f'Re-pull started for VM "{vm_name}" on "{vm.node.name}".', 'info')
-        except TartAPIError as e:
-            logger.error("repull_vm() — failed: %s", e)
-            flash(f'Re-pull failed: {e}', 'danger')
+
+    try:
+        pull_tag = _sanitize_registry_tag(pull_tag)
+        current_app.tart.restore_vm(
+            vm.node,
+            vm_name,
+            pull_tag,
+            expected_disk_gb=vm.disk_size_gb,
+        )
+        set_vm_status(vm, 'pulling', source='ui', context='repull_vm')
+        vm.status_detail = None
+        db.session.commit()
+        logger.info("repull_vm() — %r pulling from %r onto node %s", vm_name, pull_tag, vm.node.name)
+        flash(f'Re-pull started for VM "{vm_name}" on "{vm.node.name}".', 'info')
+    except TartAPIError as e:
+        logger.error("repull_vm() — failed: %s", e)
+        flash(f'Re-pull failed: {e}', 'danger')
 
     return _redirect_after_action(vm_name)
 
