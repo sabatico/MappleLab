@@ -13,11 +13,15 @@ python run.py                            # Flask dev server (default port 5000)
 python3 -m venv .venv
 pip install -r requirements.txt
 bash scripts/setup_novnc.sh             # Download noVNC static files
+bash scripts/setup_registry.sh         # Spin up local Docker registry on :5001
+bash scripts/generate_cert.sh          # Self-signed TLS cert for local HTTPS dev
+bash scripts/deploy_agent.sh           # Deploy TART agent to a Mac node
 cp .env.example .env                    # Then edit .env
 
 # Tests
 python -m unittest discover tests/
-python -m unittest tests.test_registry_cleanup   # Single test file
+python -m unittest tests.test_registry_cleanup                          # Single test file
+python -m unittest tests.test_registry_cleanup.RegistryCleanupTests    # Single test class
 
 # Production
 FLASK_ENV=production gunicorn -w 2 --threads 8 -b 127.0.0.1:5000 run:app
@@ -82,6 +86,29 @@ The manager app (Flask + gunicorn) runs on `.195`. Agent nodes run the TART agen
 - `SECRET_KEY` — Flask session secret
 - `AGENT_TOKEN` — shared secret for TART agent auth
 - `REGISTRY_URL` — Docker registry endpoint (e.g. `https://registry.example.com:5001`)
+- `REGISTRY_STORAGE_TOTAL_GB` — capacity gauge shown on Admin → Registry page
 - `VNC_USE_SSH_TUNNEL`, `VNC_BROWSER_DIRECT_NODE_WS` — VNC transport mode
+- `VNC_DEFAULT_USERNAME`, `VNC_DEFAULT_PASSWORD` — Cirrus Labs base images default to `admin/admin`; required for ARD auth
+- `VNC_DIRECT_PORT_MIN/MAX` (57000–57099) — port range for raw TCP proxy (`.vncloc` native client)
+- `VNC_DIRECT_HOST` — override hostname in `.vncloc` files for external VNC clients
+- `VNC_TCP_TUNNEL_PORT_MIN/MAX` (57100–57199) — SSH tunnel forwarding port range
+- `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER` — SMTP (also configurable at runtime via `AppSettings` model)
 - `FORCE_HTTPS`, `TRUST_PROXY` — reverse proxy config
 - `FLASK_ENV` — `development` or `production`
+- `VM_POLL_INTERVAL_MS` — HTMX polling interval (default 5000)
+
+**Auth & access control:**
+- `@admin_required` decorator (`app/utils.py`) — redirects non-admins to dashboard
+- Invite flow: tokens valid 72 hours; `must_set_password` flag on User forces password change before login
+- `RegistrationRequest` model tracks open signup requests pending admin approval
+
+**Audit & usage models:**
+- `VMStatusEvent` — immutable log of every VM status transition (source, context, timestamps)
+- `VMVncSession` — records VNC session start/end per connection; drives usage metrics
+- Helpers in `app/usage_events.py`: `record_vm_status_transition()`, `set_vm_status()`, `start_vnc_session()`, `close_vnc_session()`
+
+**Gold image distribution:**
+- `GoldImage` / `GoldImageNode` models track per-node image distribution state (pending → pulling → ready/failed)
+- `trigger_gold_distribution()` in `app/gold_distribution.py` fans out a `pull_image` call to every node
+
+**Logging:** `configure_logging()` in `run.py` must run before any app import. Writes to `logs/orchard_ui.log` (5 MB rotating, 3 backups).

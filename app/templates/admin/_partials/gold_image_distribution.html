@@ -7,11 +7,14 @@
         </tr>
     </thead>
     <tbody>
-        {% for gn in gold.nodes %}
+        {% for node in active_nodes %}
+        {% set gn = gn_by_node_id.get(node.id) %}
         <tr>
-            <td>{{ gn.node.name if gn.node else '—' }}</td>
+            <td>{{ node.name }}</td>
             <td>
-                {% if gn.status == 'ready' %}
+                {% if gn is none %}
+                <span class="badge bg-secondary">Not distributed</span>
+                {% elif gn.status == 'ready' %}
                 <span class="badge bg-success">Ready</span>
                 {% elif gn.status == 'pulling' %}
                 <span class="badge bg-info text-dark">Pulling</span>
@@ -23,11 +26,11 @@
                 <span class="badge bg-dark">{{ gn.status or '—' }}</span>
                 {% endif %}
             </td>
-            <td class="small">{{ gn.status_detail or '—' }}</td>
+            <td class="small">{{ (gn.status_detail if gn) or '—' }}</td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="3" class="text-center text-muted py-2">No nodes configured.</td>
+            <td colspan="3" class="text-center text-muted py-2">No active nodes configured.</td>
         </tr>
         {% endfor %}
     </tbody>

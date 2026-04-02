@@ -382,6 +382,18 @@ def _advance_gold_image_node(gn):
         gn.status_detail = (op or {}).get('error', 'Unknown error')
         gn.completed_at = datetime.utcnow()
         return True
+    # 'idle' means the agent has no record of this op (restarted, or op never reached it).
+    # Treat as failed so admin knows to re-distribute rather than polling forever.
+    # Valid active statuses from the agent are 'pulling', 'pending', 'running'.
+    if status == 'idle':
+        logger.warning(
+            "_advance_gold_image_node: op_key=%s returned status='idle' — marking failed (stale op)",
+            gn.op_key,
+        )
+        gn.status = 'failed'
+        gn.status_detail = 'Pull op lost (agent restarted?) — click Re-Distribute'
+        gn.completed_at = datetime.utcnow()
+        return True
     # Still pulling: update progress for display (GB pulled / GB total (%))
     transferred = (op or {}).get('transferred_gb')
     total = (op or {}).get('total_gb')
@@ -409,9 +421,9 @@ def gold_image_distribution(gold_id):
     """
     HTMX-polled partial for gold image node distribution status.
     Advances GoldImageNode status from agent poll, returns HTML.
+    Shows all active nodes, including those not yet in the distribution table.
     """
     gold = GoldImage.query.get_or_404(gold_id)
-    gold.nodes  # force load relationship
 
     for gn in gold.nodes:
         if gn.status == 'pulling':
@@ -419,9 +431,15 @@ def gold_image_distribution(gold_id):
                 if _advance_gold_image_node(gn):
                     db.session.commit()
             except Exception:
-                pass
+                logger.warning("gold_image_distribution: error advancing node gn_id=%s", gn.id, exc_info=True)
+
+    # Build a map of all active nodes → their GoldImageNode record (or None)
+    active_nodes = Node.query.filter_by(active=True).order_by(Node.id).all()
+    gn_by_node_id = {gn.node_id: gn for gn in gold.nodes}
 
     return render_template(
         'admin/_partials/gold_image_distribution.html',
         gold=gold,
+        active_nodes=active_nodes,
+        gn_by_node_id=gn_by_node_id,
     )
